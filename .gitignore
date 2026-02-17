@@ -1,0 +1,14 @@
+bin/
+obj/
+*.user
+*.suo
+*.DotSettings.user
+packages/
+.vs/
+.idea/
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
+appsettings.Development.json
+.env*

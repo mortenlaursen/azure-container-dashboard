@@ -1,0 +1,286 @@
+@page "/"
+@rendermode InteractiveServer
+@inject ContainerAppFunctionsClient Client
+
+<h1 class="text-3xl font-bold mb-6 text-gray-100">Container App Functions</h1>
+
+<div class="search-form bg-gray-800 rounded-xl p-6 shadow-lg mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
+        <div class="form-group">
+            <label class="block text-sm font-medium text-gray-400 mb-2">Subscription ID</label>
+            <input @bind="subscriptionId" class="form-input" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+        </div>
+        <div class="form-group">
+            <label class="block text-sm font-medium text-gray-400 mb-2">Resource Group</label>
+            <input @bind="resourceGroup" class="form-input" placeholder="my-resource-group" />
+        </div>
+        <div class="form-group">
+            <label class="block text-sm font-medium text-gray-400 mb-2">Container App Name</label>
+            <input @bind="appName" class="form-input" placeholder="my-container-app" />
+        </div>
+        <div class="form-group">
+            <label class="block text-sm font-medium text-gray-400 mb-2">Revision (optional)</label>
+            <input @bind="revision" class="form-input" placeholder="Leave empty for latest" />
+        </div>
+    </div>
+    <div class="flex items-center gap-4 mt-6">
+        <button class="btn-primary" @onclick="LoadFunctions" disabled="@loading">
+            <svg class="w-5 h-5 inline-block mr-2 -ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            @(loading ? "Loading..." : "List Functions")
+        </button>
+        <button class="btn-danger" @onclick="StopApp" disabled="@loading">Stop App</button>
+        <button class="btn-success" @onclick="StartApp" disabled="@loading">Start App</button>
+    </div>
+</div>
+
+@if (error is not null)
+{
+    <div class="error-box">
+        <svg class="w-5 h-5 inline-block mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        @error
+    </div>
+}
+
+@if (successMessage is not null)
+{
+    <div class="success-box">
+        <svg class="w-5 h-5 inline-block mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        @successMessage
+    </div>
+}
+
+@if (results is not null)
+{
+    @if (results.Count == 0)
+    {
+        <div class="empty-state">
+            <svg class="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+            <h3 class="text-lg font-semibold text-gray-400">No functions found.</h3>
+            <p class="text-gray-500">Try adjusting your search criteria.</p>
+        </div>
+    }
+    else
+    {
+        <div class="results-header text-sm text-gray-400 mb-3">Found @results.Count function(s)</div>
+        <div class="overflow-x-auto bg-gray-800 rounded-xl shadow-lg">
+            <table class="min-w-full">
+                <thead class="bg-gray-900/50">
+                    <tr>
+                        <th class="th">Name</th>
+                        <th class="th">Trigger</th>
+                        <th class="th">Language</th>
+                        <th class="th">Status</th>
+                        <th class="th">Invoke URL</th>
+                        <th class="th">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-700/50">
+                    @foreach (var func in results)
+                    {
+                        <tr class="hover:bg-gray-700/50 transition-colors duration-150 @(operationsInProgress.Contains(func.Name) ? "opacity-50 pointer-events-none" : "")">
+                            <td class="td font-medium text-gray-200">@func.Name</td>
+                            <td class="td"><span class="badge-blue">@func.Properties.TriggerType</span></td>
+                            <td class="td">@func.Properties.Language</td>
+                            <td class="td">
+                                @if (func.Properties.IsDisabled)
+                                {
+                                    <span class="badge-red">Disabled</span>
+                                }
+                                else
+                                {
+                                    <span class="badge-green">Active</span>
+                                }
+                            </td>
+                            <td class="td url-cell">@func.Properties.InvokeUrlTemplate</td>
+                            <td class="td actions-cell">
+                                @if (operationsInProgress.Contains(func.Name))
+                                {
+                                    <span class="working-text">
+                                        <svg class="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Working...
+                                    </span>
+                                }
+                                else if (confirmingStop.Contains(func.Name))
+                                {
+                                    <span class="font-semibold text-red-400 mr-3">Stop?</span>
+                                    <button class="btn-sm btn-danger" @onclick="() => ConfirmStop(func)">Confirm</button>
+                                    <button class="btn-sm btn-cancel" @onclick="() => CancelStop(func.Name)">Cancel</button>
+                                }
+                                else if (func.Properties.IsDisabled)
+                                {
+                                    <button class="btn-sm btn-success" @onclick="() => StartFunction(func)">Start</button>
+                                }
+                                else
+                                {
+                                    <button class="btn-sm btn-danger" @onclick="() => RequestStop(func.Name)">Stop</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+}
+
+@code {
+    private string subscriptionId = "";
+    private string resourceGroup = "";
+    private string appName = "";
+    private string? revision;
+    private bool loading;
+    private string? error;
+    private string? successMessage;
+    private List<ContainerAppFunction>? results;
+    private HashSet<string> confirmingStop = new();
+    private HashSet<string> operationsInProgress = new();
+
+    private async Task LoadFunctions()
+    {
+        if (string.IsNullOrWhiteSpace(subscriptionId) ||
+            string.IsNullOrWhiteSpace(resourceGroup) ||
+            string.IsNullOrWhiteSpace(appName))
+        {
+            error = "Subscription ID, Resource Group, and App Name are required.";
+            return;
+        }
+
+        loading = true;
+        error = null;
+        successMessage = null;
+        results = null;
+
+        try
+        {
+            var result = !string.IsNullOrWhiteSpace(revision)
+                ? await Client.ListFunctionsByRevisionAsync(subscriptionId, resourceGroup, appName, revision)
+                : await Client.ListFunctionsAsync(subscriptionId, resourceGroup, appName);
+
+            results = result.Value;
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void RequestStop(string functionName)
+    {
+        confirmingStop.Add(functionName);
+    }
+
+    private void CancelStop(string functionName)
+    {
+        confirmingStop.Remove(functionName);
+    }
+
+    private async Task ConfirmStop(ContainerAppFunction func)
+    {
+        confirmingStop.Remove(func.Name);
+        operationsInProgress.Add(func.Name);
+        error = null;
+        successMessage = null;
+
+        try
+        {
+            await Client.SetFunctionDisabledAsync(subscriptionId, resourceGroup, appName, func.Name, disabled: true);
+            func.Properties.IsDisabled = true;
+            successMessage = $"Function '{func.Name}' has been stopped. A new revision is being created.";
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to stop function '{func.Name}': {ex.Message}";
+        }
+        finally
+        {
+            operationsInProgress.Remove(func.Name);
+        }
+    }
+
+    private async Task StopApp()
+    {
+        if (string.IsNullOrWhiteSpace(subscriptionId) ||
+            string.IsNullOrWhiteSpace(resourceGroup) ||
+            string.IsNullOrWhiteSpace(appName))
+        {
+            error = "Subscription ID, Resource Group, and App Name are required.";
+            return;
+        }
+
+        loading = true;
+        error = null;
+        successMessage = null;
+
+        try
+        {
+            await Client.StopContainerAppAsync(subscriptionId, resourceGroup, appName);
+            successMessage = $"Container App '{appName}' is stopping.";
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to stop app: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task StartApp()
+    {
+        if (string.IsNullOrWhiteSpace(subscriptionId) ||
+            string.IsNullOrWhiteSpace(resourceGroup) ||
+            string.IsNullOrWhiteSpace(appName))
+        {
+            error = "Subscription ID, Resource Group, and App Name are required.";
+            return;
+        }
+
+        loading = true;
+        error = null;
+        successMessage = null;
+
+        try
+        {
+            await Client.StartContainerAppAsync(subscriptionId, resourceGroup, appName);
+            successMessage = $"Container App '{appName}' is starting.";
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to start app: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task StartFunction(ContainerAppFunction func)
+    {
+        operationsInProgress.Add(func.Name);
+        error = null;
+        successMessage = null;
+
+        try
+        {
+            await Client.SetFunctionDisabledAsync(subscriptionId, resourceGroup, appName, func.Name, disabled: false);
+            func.Properties.IsDisabled = false;
+            successMessage = $"Function '{func.Name}' has been started. A new revision is being created.";
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to start function '{func.Name}': {ex.Message}";
+        }
+        finally
+        {
+            operationsInProgress.Remove(func.Name);
+        }
+    }
+}

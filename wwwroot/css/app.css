@@ -1,0 +1,81 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    .form-input {
+        @apply w-full bg-gray-700 border border-gray-600 rounded-md shadow-sm py-2 px-3 text-gray-200 leading-tight focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent;
+    }
+
+    .btn-primary {
+        @apply bg-purple-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 shadow-md flex items-center justify-center;
+    }
+
+    .btn-danger {
+        @apply bg-red-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 shadow-md;
+    }
+
+    .btn-success {
+        @apply bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200 shadow-md;
+    }
+    
+    .btn-sm {
+        @apply font-bold py-1 px-3 rounded-md text-sm transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+    }
+    
+    .btn-sm.btn-danger {
+        @apply bg-red-500/20 text-red-400 hover:bg-red-500/30;
+    }
+    
+    .btn-sm.btn-success {
+        @apply bg-green-500/20 text-green-400 hover:bg-green-500/30;
+    }
+    
+    .btn-sm.btn-cancel {
+        @apply bg-gray-500/20 text-gray-300 hover:bg-gray-500/30;
+    }
+
+    .th {
+        @apply px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider;
+    }
+
+    .td {
+        @apply px-6 py-4 whitespace-nowrap text-sm text-gray-300;
+    }
+
+    .badge-blue {
+        @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-500/20 text-blue-300;
+    }
+
+    .badge-green {
+        @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-500/20 text-green-300;
+    }
+
+    .badge-red {
+        @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-500/20 text-red-300;
+    }
+
+    .error-box {
+        @apply bg-red-500/20 text-red-300 p-4 rounded-lg mb-6 flex items-center;
+    }
+    
+    .success-box {
+        @apply bg-green-500/20 text-green-300 p-4 rounded-lg mb-6 flex items-center;
+    }
+
+    .url-cell {
+        @apply font-mono text-xs text-teal-300;
+    }
+    
+    .actions-cell {
+        @apply flex items-center gap-3 h-full;
+    }
+
+    .working-text {
+        @apply flex items-center text-sm text-gray-400 italic;
+    }
+
+    .empty-state {
+        @apply text-center py-16 px-6 bg-gray-800 rounded-xl;
+    }
+}
