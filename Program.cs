@@ -7,6 +7,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 builder.Services.AddSingleton<ContainerAppFunctionsClient>();
+builder.Services.AddSingleton<AppInsightsClient>();
 
 var app = builder.Build();
 

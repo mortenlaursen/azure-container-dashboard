@@ -58,18 +58,36 @@ public class ContainerApp
 
     [JsonPropertyName("properties")]
     public ContainerAppProperties? Properties { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }
 
 public class ContainerAppProperties
 {
+    [JsonPropertyName("provisioningState")]
+    public string? ProvisioningState { get; set; }
+
+    [JsonPropertyName("runningStatus")]
+    public string? RunningStatus { get; set; }
+
+    [JsonPropertyName("latestRevisionName")]
+    public string? LatestRevisionName { get; set; }
+
     [JsonPropertyName("template")]
     public ContainerAppTemplate? Template { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }
 
 public class ContainerAppTemplate
 {
     [JsonPropertyName("containers")]
     public List<ContainerAppContainer> Containers { get; set; } = [];
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }
 
 public class ContainerAppContainer
@@ -85,6 +103,9 @@ public class ContainerAppContainer
 
     [JsonPropertyName("resources")]
     public JsonElement? Resources { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }
 
 public class EnvironmentVariable
@@ -97,4 +118,7 @@ public class EnvironmentVariable
 
     [JsonPropertyName("secretRef")]
     public string? SecretRef { get; set; }
+
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ExtensionData { get; set; }
 }

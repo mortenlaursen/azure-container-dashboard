@@ -1,0 +1,226 @@
+@page "/function/{FunctionName}"
+@rendermode InteractiveServer
+@attribute [StreamRendering]
+@inject ContainerAppFunctionsClient ArmClient
+@inject AppInsightsClient InsightsClient
+
+<PageTitle>@FunctionName - Invocations</PageTitle>
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+    <header class="mb-8 flex items-center gap-4">
+        <a href="/?sub=@Uri.EscapeDataString(Sub ?? "")&rg=@Uri.EscapeDataString(Rg ?? "")&app=@Uri.EscapeDataString(App ?? "")"
+           style="color: #a5a9c0; transition: color 0.15s; display: flex; align-items: center; padding: 8px; border-radius: 8px; background-color: rgba(129,140,248,0.1);"
+           onmouseover="this.style.color='#e4e6ed'; this.style.backgroundColor='rgba(129,140,248,0.2)'"
+           onmouseout="this.style.color='#a5a9c0'; this.style.backgroundColor='rgba(129,140,248,0.1)'">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+        </a>
+        <div>
+            <h1 class="text-3xl font-bold tracking-tight" style="color: #f3f4f6;">@FunctionName</h1>
+            <p class="mt-1 text-sm" style="color: #a5a9c0;">Invocation history from Application Insights</p>
+        </div>
+    </header>
+
+    @if (loading)
+    {
+        <div class="loading-bar" style="justify-content: center; padding: 48px 20px;">
+            <svg class="spinner" style="width: 24px; height: 24px; color: #818cf8;" fill="none" viewBox="0 0 24 24">
+                <circle style="opacity: 0.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path style="opacity: 0.75;" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Loading invocations from Application Insights...</span>
+        </div>
+    }
+    else if (error is not null)
+    {
+        <div class="error-box">
+            <svg class="w-5 h-5 mr-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <div>
+                <strong>Error</strong>
+                <p style="margin: 2px 0 0;">@error</p>
+            </div>
+        </div>
+    }
+    else if (invocations is not null)
+    {
+        @if (invocations.Count == 0)
+        {
+            <div class="empty-state">
+                <svg class="mx-auto mb-5" style="width: 64px; height: 64px; color: #4b5563;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                <h3 class="text-xl font-semibold" style="color: #d1d5db;">No recent invocations found</h3>
+                <p class="mt-2" style="color: #a5a9c0;">No invocation data was found in Application Insights for the last 24 hours.</p>
+            </div>
+        }
+        else
+        {
+            <div class="text-sm mb-3" style="color: #a5a9c0;">Showing <strong style="color: #d1d5db;">@invocations.Count</strong> most recent invocation(s)</div>
+            <div style="overflow-x: auto; background-color: #272941; border-radius: 12px; border: 1px solid #363960; box-shadow: 0 4px 24px rgba(0,0,0,0.2);">
+                <table class="min-w-full">
+                    <thead style="background-color: #1e1f33;">
+                        <tr>
+                            <th class="th" style="width: 180px;">Timestamp</th>
+                            <th class="th" style="width: 100px; text-align: center;">Status</th>
+                            <th class="th" style="width: 80px; text-align: center;">Code</th>
+                            <th class="th" style="width: 110px; text-align: right;">Duration</th>
+                            <th class="th">Invocation ID</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var inv in invocations)
+                        {
+                            var isExpanded = expandedOperationId == inv.OperationId;
+                            <tr class="invocation-row"
+                                style="border-top: 1px solid #363960; cursor: pointer; transition: background-color 0.15s; @(isExpanded ? "background-color: rgba(99,102,241,0.08);" : "")"
+                                onmouseover="@(isExpanded ? "" : "this.style.backgroundColor='rgba(99,102,241,0.05)'")"
+                                onmouseout="@(isExpanded ? "" : "this.style.backgroundColor='transparent'")"
+                                @onclick="() => ToggleTraces(inv)">
+                                <td class="td" style="font-size: 0.85rem;">@inv.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                                <td class="td" style="text-align: center;">
+                                    @if (inv.Success)
+                                    {
+                                        <span class="badge-green">Success</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge-red">Failed</span>
+                                    }
+                                </td>
+                                <td class="td" style="text-align: center; font-family: 'SF Mono', 'Cascadia Code', monospace; font-size: 0.75rem;">@inv.ResultCode</td>
+                                <td class="td" style="text-align: right; font-family: 'SF Mono', 'Cascadia Code', monospace; font-size: 0.75rem;">@FormatDuration(inv.DurationMs)</td>
+                                <td class="td" style="font-family: 'SF Mono', 'Cascadia Code', monospace; font-size: 0.75rem; color: #a5a9c0;">@inv.InvocationId</td>
+                            </tr>
+                            @if (isExpanded)
+                            {
+                                <tr>
+                                    <td colspan="5" style="padding: 0;">
+                                        <div class="trace-panel">
+                                            @if (tracesLoading)
+                                            {
+                                                <div style="display: flex; align-items: center; gap: 10px; padding: 16px 20px;">
+                                                    <svg class="spinner" style="width: 18px; height: 18px; color: #818cf8;" fill="none" viewBox="0 0 24 24">
+                                                        <circle style="opacity: 0.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                        <path style="opacity: 0.75;" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    <span style="color: #a5a9c0; font-size: 0.875rem;">Loading traces...</span>
+                                                </div>
+                                            }
+                                            else if (tracesError is not null)
+                                            {
+                                                <div style="padding: 16px 20px; color: #f87171; font-size: 0.875rem;">@tracesError</div>
+                                            }
+                                            else if (traces is not null && traces.Count == 0)
+                                            {
+                                                <div style="padding: 16px 20px; color: #a5a9c0; font-size: 0.875rem; font-style: italic;">No trace data available for this invocation.</div>
+                                            }
+                                            else if (traces is not null)
+                                            {
+                                                <div class="trace-entries">
+                                                    @foreach (var trace in traces)
+                                                    {
+                                                        <div class="trace-entry">
+                                                            <span class="trace-timestamp">@trace.Timestamp.ToString("HH:mm:ss.fff")</span>
+                                                            <span class="trace-severity severity-@trace.SeverityLevel">@trace.SeverityLabel</span>
+                                                            <span class="trace-message">@trace.Message</span>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string FunctionName { get; set; } = "";
+
+    [SupplyParameterFromQuery(Name = "sub")] public string? Sub { get; set; }
+    [SupplyParameterFromQuery(Name = "rg")] public string? Rg { get; set; }
+    [SupplyParameterFromQuery(Name = "app")] public string? App { get; set; }
+
+    private bool loading = true;
+    private string? error;
+    private List<FunctionInvocation>? invocations;
+
+    private string? expandedOperationId;
+    private bool tracesLoading;
+    private string? tracesError;
+    private List<InvocationTrace>? traces;
+    private string? appInsightsAppId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (string.IsNullOrWhiteSpace(Sub) || string.IsNullOrWhiteSpace(Rg) || string.IsNullOrWhiteSpace(App))
+        {
+            error = "Missing required parameters (subscription, resource group, or app name).";
+            loading = false;
+            return;
+        }
+
+        try
+        {
+            appInsightsAppId = await ArmClient.GetAppInsightsAppIdAsync(Sub, Rg, App);
+
+            if (string.IsNullOrEmpty(appInsightsAppId))
+            {
+                error = "Application Insights is not configured for this container app. " +
+                        "Ensure APPLICATIONINSIGHTS_CONNECTION_STRING is set as an environment variable on the container.";
+                loading = false;
+                return;
+            }
+
+            invocations = await InsightsClient.GetInvocationsAsync(appInsightsAppId, FunctionName);
+        }
+        catch (Exception ex)
+        {
+            error = ex.Message;
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task ToggleTraces(FunctionInvocation inv)
+    {
+        if (expandedOperationId == inv.OperationId)
+        {
+            expandedOperationId = null;
+            traces = null;
+            tracesError = null;
+            return;
+        }
+
+        expandedOperationId = inv.OperationId;
+        traces = null;
+        tracesError = null;
+        tracesLoading = true;
+
+        try
+        {
+            traces = await InsightsClient.GetInvocationTracesAsync(appInsightsAppId!, inv.OperationId);
+        }
+        catch (Exception ex)
+        {
+            tracesError = $"Failed to load traces: {ex.Message}";
+        }
+        finally
+        {
+            tracesLoading = false;
+        }
+    }
+
+    private static string FormatDuration(double ms)
+    {
+        if (ms < 1000) return $"{ms:F0} ms";
+        if (ms < 60000) return $"{ms / 1000:F1} s";
+        var minutes = (int)(ms / 60000);
+        var seconds = (ms % 60000) / 1000;
+        return $"{minutes}m {seconds:F0}s";
+    }
+}

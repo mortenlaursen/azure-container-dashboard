@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Azure.Core;
 using Azure.Identity;
@@ -105,31 +106,77 @@ public class ContainerAppFunctionsClient
         bool disabled,
         CancellationToken cancellationToken = default)
     {
-        var containerApp = await GetContainerAppAsync(subscriptionId, resourceGroupName, containerAppName, cancellationToken);
+        await SetFunctionsDisabledAsync(subscriptionId, resourceGroupName, containerAppName, [functionName], disabled, cancellationToken);
+    }
 
-        var containers = containerApp.Properties?.Template?.Containers;
-        if (containers == null || containers.Count == 0)
-            throw new InvalidOperationException("Container App has no containers defined.");
-
-        var container = containers[0];
-        container.Env ??= [];
-
-        var envVarName = $"AzureWebJobs.{functionName}.Disabled";
-        var existingVar = container.Env.FirstOrDefault(e => e.Name == envVarName);
-
-        if (existingVar != null)
-        {
-            existingVar.Value = disabled ? "true" : "false";
-        }
-        else
-        {
-            container.Env.Add(new EnvironmentVariable { Name = envVarName, Value = disabled ? "true" : "false" });
-        }
-
+    /// <summary>
+    /// Enables or disables multiple functions in a single PATCH call,
+    /// creating only one new revision instead of one per function.
+    /// Works with raw JSON to preserve all existing fields and only
+    /// sends the template portion as a minimal PATCH.
+    /// </summary>
+    public async Task SetFunctionsDisabledAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string containerAppName,
+        IReadOnlyList<string> functionNames,
+        bool disabled,
+        CancellationToken cancellationToken = default)
+    {
         var url = $"{ManagementEndpoint}/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}" +
                   $"/providers/Microsoft.App/containerApps/{containerAppName}?api-version={ApiVersion}";
 
-        await SendPatchRequestAsync<ContainerApp>(url, containerApp, cancellationToken);
+        // GET the full raw JSON
+        var rawJson = await GetRawJsonAsync(url, cancellationToken);
+        var doc = JsonNode.Parse(rawJson)
+                  ?? throw new JsonException("Failed to parse container app JSON");
+
+        var containers = doc["properties"]?["template"]?["containers"]?.AsArray();
+        if (containers == null || containers.Count == 0)
+            throw new InvalidOperationException("Container App has no containers defined.");
+
+        var container = containers[0]!.AsObject();
+        var env = container["env"]?.AsArray();
+        if (env == null)
+        {
+            env = new JsonArray();
+            container["env"] = env;
+        }
+
+        foreach (var functionName in functionNames)
+        {
+            var envVarName = $"AzureWebJobs_{functionName}_Disabled";
+            var existing = env.FirstOrDefault(e => e?["name"]?.GetValue<string>() == envVarName);
+
+            if (existing != null)
+            {
+                existing.AsObject()["value"] = disabled ? "true" : "false";
+            }
+            else
+            {
+                env.Add(new JsonObject
+                {
+                    ["name"] = envVarName,
+                    ["value"] = disabled ? "true" : "false"
+                });
+            }
+        }
+
+        // Set a new revisionSuffix to force a new revision
+        var template = doc["properties"]!["template"]!.AsObject();
+        var suffix = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+        template["revisionSuffix"] = suffix;
+
+        // Send only the template as a minimal PATCH
+        var patchBody = new JsonObject
+        {
+            ["properties"] = new JsonObject
+            {
+                ["template"] = template.DeepClone()
+            }
+        };
+
+        await SendPatchAsync(url, patchBody.ToJsonString(), cancellationToken);
     }
 
     /// <summary>
@@ -181,6 +228,44 @@ public class ContainerAppFunctionsClient
         }
     }
 
+    /// <summary>
+    /// Extracts the Application Insights ApplicationId from the container app's
+    /// APPLICATIONINSIGHTS_CONNECTION_STRING environment variable.
+    /// </summary>
+    public async Task<string?> GetAppInsightsAppIdAsync(
+        string subscriptionId,
+        string resourceGroupName,
+        string containerAppName,
+        CancellationToken cancellationToken = default)
+    {
+        var containerApp = await GetContainerAppAsync(subscriptionId, resourceGroupName, containerAppName, cancellationToken);
+
+        var containers = containerApp.Properties?.Template?.Containers;
+        if (containers == null || containers.Count == 0)
+            return null;
+
+        var connectionString = containers
+            .SelectMany(c => c.Env ?? [])
+            .FirstOrDefault(e => e.Name == "APPLICATIONINSIGHTS_CONNECTION_STRING")
+            ?.Value;
+
+        if (string.IsNullOrEmpty(connectionString))
+            return null;
+
+        return ParseAppIdFromConnectionString(connectionString);
+    }
+
+    internal static string? ParseAppIdFromConnectionString(string connectionString)
+    {
+        foreach (var part in connectionString.Split(';'))
+        {
+            var trimmed = part.Trim();
+            if (trimmed.StartsWith("ApplicationId=", StringComparison.OrdinalIgnoreCase))
+                return trimmed["ApplicationId=".Length..];
+        }
+        return null;
+    }
+
     private async Task<T> SendRequestAsync<T>(string url, CancellationToken cancellationToken)
     {
         var token = await GetAccessTokenAsync(cancellationToken);
@@ -202,32 +287,38 @@ public class ContainerAppFunctionsClient
                ?? throw new JsonException($"Failed to deserialize response from {url}");
     }
 
-    private static readonly JsonSerializerOptions PatchSerializerOptions = new()
-    {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-    };
-
-    private async Task<T> SendPatchRequestAsync<T>(string url, object body, CancellationToken cancellationToken)
+    private async Task<string> GetRawJsonAsync(string url, CancellationToken cancellationToken)
     {
         var token = await GetAccessTokenAsync(cancellationToken);
 
-        var json = JsonSerializer.Serialize(body, PatchSerializerOptions);
-
-        using var request = new HttpRequestMessage(HttpMethod.Patch, url);
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        request.Content = new StringContent(json, Encoding.UTF8, "application/merge-patch+json");
 
         var response = await _httpClient.SendAsync(request, cancellationToken);
-
         var content = await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)
+            throw new HttpRequestException(
+                $"Azure ARM request failed with {response.StatusCode}: {content}");
+
+        return content;
+    }
+
+    private async Task SendPatchAsync(string url, string jsonBody, CancellationToken cancellationToken)
+    {
+        var token = await GetAccessTokenAsync(cancellationToken);
+
+        using var request = new HttpRequestMessage(HttpMethod.Patch, url);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+        request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+
+        var response = await _httpClient.SendAsync(request, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
         {
+            var content = await response.Content.ReadAsStringAsync(cancellationToken);
             throw new HttpRequestException(
                 $"Azure ARM request failed with {response.StatusCode}: {content}");
         }
-
-        return JsonSerializer.Deserialize<T>(content)
-               ?? throw new JsonException($"Failed to deserialize response from {url}");
     }
 }
