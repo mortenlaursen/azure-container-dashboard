@@ -4,7 +4,7 @@ using System.Text.Json;
 using Azure.Core;
 using Azure.Identity;
 
-namespace AzureContainerFunctions;
+namespace Azure.Container.Dashboard;
 
 public class AppInsightsClient
 {

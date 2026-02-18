@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace AzureContainerFunctions;
+namespace Azure.Container.Dashboard;
 
 public class AppInsightsQueryResponse
 {
