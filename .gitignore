@@ -12,6 +12,7 @@ packages/
 Thumbs.db
 appsettings.Development.json
 .env*
+local.settings.json
 
 # AI/tool configs
 .gemini/
