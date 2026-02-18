@@ -2,7 +2,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Azure.Core;
-using Azure.Identity;
 
 namespace Azure.Container.Dashboard;
 
@@ -13,10 +12,10 @@ public class AppInsightsClient
     private readonly HttpClient _httpClient;
     private readonly TokenCredential _credential;
 
-    public AppInsightsClient(TokenCredential? credential = null)
+    public AppInsightsClient(HttpClient httpClient, TokenCredential credential)
     {
-        _credential = credential ?? new AzureCliCredential();
-        _httpClient = new HttpClient();
+        _httpClient = httpClient;
+        _credential = credential;
     }
 
     private async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default)
@@ -30,14 +29,14 @@ public class AppInsightsClient
         string appId,
         string functionName,
         string timespan = "P1D",
-        int limit = 50,
+        int limit = 200,
         CancellationToken cancellationToken = default)
     {
+        var safeName = EscapeKql(functionName);
         var kql = $@"requests
 | extend functionNameFromCustomDimension = tostring(customDimensions['faas.name']),
          invocationId = coalesce(tostring(customDimensions['InvocationId']), tostring(customDimensions['faas.invocation_id']))
-| where timestamp > ago(24h)
-| where operation_Name =~ '{functionName}' or functionNameFromCustomDimension =~ '{functionName}'
+| where operation_Name =~ '{safeName}' or functionNameFromCustomDimension =~ '{safeName}'
 | order by timestamp desc
 | take {limit}
 | project timestamp, success, resultCode, durationInMilliSeconds=duration, invocationId, operationId=operation_Id, operationName=operation_Name";
@@ -46,13 +45,42 @@ public class AppInsightsClient
         return ParseInvocations(response);
     }
 
+    public async Task<InvocationCounts> GetInvocationCountsAsync(
+        string appId,
+        string functionName,
+        string timespan = "P30D",
+        CancellationToken cancellationToken = default)
+    {
+        var safeName = EscapeKql(functionName);
+        var kql = $@"requests
+| extend functionNameFromCustomDimension = tostring(customDimensions['faas.name'])
+| where operation_Name =~ '{safeName}' or functionNameFromCustomDimension =~ '{safeName}'
+| summarize total=count(), failed=countif(success == false)";
+
+        var response = await QueryAsync(appId, kql, timespan, cancellationToken);
+
+        if (response.Tables.Count == 0 || response.Tables[0].Rows.Count == 0)
+            return new InvocationCounts();
+
+        var table = response.Tables[0];
+        var colIndex = BuildColumnIndex(table.Columns);
+        var row = table.Rows[0];
+
+        return new InvocationCounts
+        {
+            Total = (int)GetDouble(row, colIndex, "total"),
+            Failed = (int)GetDouble(row, colIndex, "failed")
+        };
+    }
+
     public async Task<List<InvocationTrace>> GetInvocationTracesAsync(
         string appId,
         string operationId,
         CancellationToken cancellationToken = default)
     {
+        var safeOperationId = EscapeKql(operationId);
         var kql = $@"traces
-| where operation_Id == '{operationId}'
+| where operation_Id == '{safeOperationId}'
 | order by timestamp asc
 | project timestamp, message, severityLevel";
 
@@ -75,7 +103,7 @@ public class AppInsightsClient
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         request.Content = new StringContent(body, Encoding.UTF8, "application/json");
 
-        var response = await _httpClient.SendAsync(request, cancellationToken);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
         var content = await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -184,4 +212,6 @@ public class AppInsightsClient
         if (el.ValueKind == JsonValueKind.String && DateTime.TryParse(el.GetString(), out var dt)) return dt;
         return default;
     }
+
+    private static string EscapeKql(string value) => value.Replace("'", "''");
 }

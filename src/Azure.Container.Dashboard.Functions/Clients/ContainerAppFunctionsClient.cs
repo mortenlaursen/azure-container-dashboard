@@ -2,9 +2,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
 using Azure.Core;
-using Azure.Identity;
 
 namespace Azure.Container.Dashboard;
 
@@ -16,10 +14,10 @@ public class ContainerAppFunctionsClient
     private readonly HttpClient _httpClient;
     private readonly TokenCredential _credential;
 
-    public ContainerAppFunctionsClient(TokenCredential? credential = null)
+    public ContainerAppFunctionsClient(HttpClient httpClient, TokenCredential credential)
     {
-        _credential = credential ?? new AzureCliCredential();
-        _httpClient = new HttpClient();
+        _httpClient = httpClient;
+        _credential = credential;
     }
 
     private async Task<string> GetAccessTokenAsync(CancellationToken cancellationToken = default)
@@ -29,10 +27,6 @@ public class ContainerAppFunctionsClient
         return token.Token;
     }
 
-    /// <summary>
-    /// Lists all functions in the latest revision of a Container App.
-    /// Equivalent to: az containerapp function list -g {resourceGroup} -n {appName}
-    /// </summary>
     public async Task<ContainerAppFunctionCollection> ListFunctionsAsync(
         string subscriptionId,
         string resourceGroupName,
@@ -45,10 +39,6 @@ public class ContainerAppFunctionsClient
         return await SendRequestAsync<ContainerAppFunctionCollection>(url, cancellationToken);
     }
 
-    /// <summary>
-    /// Gets a specific function by name from the latest revision.
-    /// Equivalent to: az containerapp function show -g {resourceGroup} -n {appName} --function-name {functionName}
-    /// </summary>
     public async Task<ContainerAppFunction> GetFunctionAsync(
         string subscriptionId,
         string resourceGroupName,
@@ -62,10 +52,6 @@ public class ContainerAppFunctionsClient
         return await SendRequestAsync<ContainerAppFunction>(url, cancellationToken);
     }
 
-    /// <summary>
-    /// Lists all functions in a specific revision of a Container App.
-    /// Equivalent to: az containerapp function list -g {resourceGroup} -n {appName} --revision {revisionName}
-    /// </summary>
     public async Task<ContainerAppFunctionCollection> ListFunctionsByRevisionAsync(
         string subscriptionId,
         string resourceGroupName,
@@ -79,9 +65,6 @@ public class ContainerAppFunctionsClient
         return await SendRequestAsync<ContainerAppFunctionCollection>(url, cancellationToken);
     }
 
-    /// <summary>
-    /// Gets the Container App resource (needed to read current template before PATCH).
-    /// </summary>
     public async Task<ContainerApp> GetContainerAppAsync(
         string subscriptionId,
         string resourceGroupName,
@@ -94,95 +77,124 @@ public class ContainerAppFunctionsClient
         return await SendRequestAsync<ContainerApp>(url, cancellationToken);
     }
 
-    /// <summary>
-    /// Enables or disables a function by setting the AzureWebJobs.{functionName}.Disabled
-    /// environment variable on the Container App.
-    /// </summary>
-    public async Task SetFunctionDisabledAsync(
+    public async Task UpdateFunctionsStateAsync(
         string subscriptionId,
         string resourceGroupName,
         string containerAppName,
-        string functionName,
-        bool disabled,
+        IReadOnlyList<string> functionsToDisable,
+        IReadOnlyList<string> functionsToEnable,
         CancellationToken cancellationToken = default)
     {
-        await SetFunctionsDisabledAsync(subscriptionId, resourceGroupName, containerAppName, [functionName], disabled, cancellationToken);
-    }
+        const int maxRetries = 10;
+        const int pollDelayMs = 3000;
 
-    /// <summary>
-    /// Enables or disables multiple functions in a single PATCH call,
-    /// creating only one new revision instead of one per function.
-    /// Works with raw JSON to preserve all existing fields and only
-    /// sends the template portion as a minimal PATCH.
-    /// </summary>
-    public async Task SetFunctionsDisabledAsync(
-        string subscriptionId,
-        string resourceGroupName,
-        string containerAppName,
-        IReadOnlyList<string> functionNames,
-        bool disabled,
-        CancellationToken cancellationToken = default)
-    {
         var url = $"{ManagementEndpoint}/subscriptions/{subscriptionId}/resourceGroups/{resourceGroupName}" +
                   $"/providers/Microsoft.App/containerApps/{containerAppName}?api-version={ApiVersion}";
 
-        // GET the full raw JSON
-        var rawJson = await GetRawJsonAsync(url, cancellationToken);
-        var doc = JsonNode.Parse(rawJson)
-                  ?? throw new JsonException("Failed to parse container app JSON");
-
-        var containers = doc["properties"]?["template"]?["containers"]?.AsArray();
-        if (containers == null || containers.Count == 0)
-            throw new InvalidOperationException("Container App has no containers defined.");
-
-        var container = containers[0]!.AsObject();
-        var env = container["env"]?.AsArray();
-        if (env == null)
+        for (var attempt = 0; ; attempt++)
         {
-            env = new JsonArray();
-            container["env"] = env;
-        }
+            var rawJson = await GetRawJsonAsync(url, cancellationToken);
+            var doc = JsonNode.Parse(rawJson)
+                      ?? throw new JsonException("Failed to parse container app JSON");
 
-        foreach (var functionName in functionNames)
-        {
-            var envVarName = $"AzureWebJobs_{functionName}_Disabled";
-            var existing = env.FirstOrDefault(e => e?["name"]?.GetValue<string>() == envVarName);
-
-            if (existing != null)
+            // Wait for any in-progress provisioning before attempting PATCH
+            var provisioningState = doc["properties"]?["provisioningState"]?.GetValue<string>();
+            if (provisioningState != null &&
+                !string.Equals(provisioningState, "Succeeded", StringComparison.OrdinalIgnoreCase))
             {
-                existing.AsObject()["value"] = disabled ? "true" : "false";
+                if (attempt >= maxRetries)
+                    throw new InvalidOperationException(
+                        $"Container App is still provisioning (state: {provisioningState}) after {maxRetries} retries.");
+
+                await Task.Delay(pollDelayMs, cancellationToken);
+                continue;
             }
-            else
+
+            var containers = doc["properties"]?["template"]?["containers"]?.AsArray();
+            if (containers == null || containers.Count == 0)
+                throw new InvalidOperationException("Container App has no containers defined.");
+
+            var container = containers[0]!.AsObject();
+            var env = container["env"]?.AsArray();
+            if (env == null)
             {
-                env.Add(new JsonObject
+                env = new JsonArray();
+                container["env"] = env;
+            }
+
+            // Disable: add or update env var to "true"
+            foreach (var functionName in functionsToDisable)
+            {
+                var envVarName = $"AzureWebJobs_{functionName}_Disabled";
+                var existing = env.FirstOrDefault(e => e?["name"]?.GetValue<string>() == envVarName);
+
+                if (existing != null)
                 {
-                    ["name"] = envVarName,
-                    ["value"] = disabled ? "true" : "false"
-                });
+                    existing.AsObject()["value"] = "true";
+                }
+                else
+                {
+                    env.Add(new JsonObject
+                    {
+                        ["name"] = envVarName,
+                        ["value"] = "true"
+                    });
+                }
+            }
+
+            // Enable: remove the env var entirely
+            foreach (var functionName in functionsToEnable)
+            {
+                var envVarName = $"AzureWebJobs_{functionName}_Disabled";
+                var existing = env.FirstOrDefault(e => e?["name"]?.GetValue<string>() == envVarName);
+                if (existing != null)
+                    env.Remove(existing);
+            }
+
+            // Build revision suffix based on the current revision name
+            var template = doc["properties"]!["template"]!.AsObject();
+            var latestRevisionName = doc["properties"]?["latestRevisionName"]?.GetValue<string>();
+            template["revisionSuffix"] = BuildRevisionSuffix(latestRevisionName, containerAppName);
+
+            var patchBody = new JsonObject
+            {
+                ["properties"] = new JsonObject
+                {
+                    ["template"] = template.DeepClone()
+                }
+            };
+
+            try
+            {
+                await SendPatchAsync(url, patchBody.ToJsonString(), cancellationToken);
+                return;
+            }
+            catch (HttpRequestException ex) when (
+                attempt < maxRetries &&
+                ex.Message.Contains("ContainerAppOperationInProgress", StringComparison.OrdinalIgnoreCase))
+            {
+                await Task.Delay(pollDelayMs, cancellationToken);
             }
         }
-
-        // Set a new revisionSuffix to force a new revision
-        var template = doc["properties"]!["template"]!.AsObject();
-        var suffix = DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
-        template["revisionSuffix"] = suffix;
-
-        // Send only the template as a minimal PATCH
-        var patchBody = new JsonObject
-        {
-            ["properties"] = new JsonObject
-            {
-                ["template"] = template.DeepClone()
-            }
-        };
-
-        await SendPatchAsync(url, patchBody.ToJsonString(), cancellationToken);
     }
 
-    /// <summary>
-    /// Stops the entire Container App.
-    /// POST .../containerApps/{name}/stop
-    /// </summary>
+    internal static string BuildRevisionSuffix(string? latestRevisionName, string containerAppName)
+    {
+        if (string.IsNullOrEmpty(latestRevisionName))
+            return DateTime.UtcNow.ToString("yyyyMMdd-HHmmss");
+
+        var prefix = $"{containerAppName}--";
+        var currentSuffix = latestRevisionName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? latestRevisionName[prefix.Length..]
+            : latestRevisionName;
+
+        var lastDash = currentSuffix.LastIndexOf('-');
+        if (lastDash > 0 && int.TryParse(currentSuffix.AsSpan(lastDash + 1), out var counter))
+            return $"{currentSuffix[..lastDash]}-{counter + 1}";
+
+        return $"{currentSuffix}-1";
+    }
+
     public async Task StopContainerAppAsync(
         string subscriptionId,
         string resourceGroupName,
@@ -195,10 +207,6 @@ public class ContainerAppFunctionsClient
         await SendPostAsync(url, cancellationToken);
     }
 
-    /// <summary>
-    /// Starts the entire Container App.
-    /// POST .../containerApps/{name}/start
-    /// </summary>
     public async Task StartContainerAppAsync(
         string subscriptionId,
         string resourceGroupName,
@@ -218,7 +226,7 @@ public class ContainerAppFunctionsClient
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _httpClient.SendAsync(request, cancellationToken);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {
@@ -228,10 +236,6 @@ public class ContainerAppFunctionsClient
         }
     }
 
-    /// <summary>
-    /// Extracts the Application Insights ApplicationId from the container app's
-    /// APPLICATIONINSIGHTS_CONNECTION_STRING environment variable.
-    /// </summary>
     public async Task<string?> GetAppInsightsAppIdAsync(
         string subscriptionId,
         string resourceGroupName,
@@ -273,7 +277,7 @@ public class ContainerAppFunctionsClient
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _httpClient.SendAsync(request, cancellationToken);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
 
         var content = await response.Content.ReadAsStringAsync(cancellationToken);
 
@@ -294,7 +298,7 @@ public class ContainerAppFunctionsClient
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var response = await _httpClient.SendAsync(request, cancellationToken);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
         var content = await response.Content.ReadAsStringAsync(cancellationToken);
 
         if (!response.IsSuccessStatusCode)
@@ -312,7 +316,7 @@ public class ContainerAppFunctionsClient
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
 
-        var response = await _httpClient.SendAsync(request, cancellationToken);
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {

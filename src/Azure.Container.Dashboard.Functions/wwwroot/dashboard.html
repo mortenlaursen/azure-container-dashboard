@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Container App Dashboard</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect x='3' y='6' width='26' height='20' rx='3' fill='%23818cf8'/><rect x='3' y='6' width='26' height='7' rx='3' fill='%236366f1'/><circle cx='7' cy='9.5' r='1.2' fill='%23c7d2fe'/><circle cx='11' cy='9.5' r='1.2' fill='%23c7d2fe'/><path d='M18 13l-4 7h4l-2 6 6-8h-4l2-5z' fill='%23fef08a'/></svg>">
+    <style>
+        /* ── Reset & Base ── */
+        *, *::before, *::after { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background-color: #1e1f2e;
+            color: #e4e6ed;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Utilities ── */
+        .max-w-7xl { max-width: 80rem; }
+        .mx-auto { margin-left: auto; margin-right: auto; }
+        .px-4 { padding-left: 1rem; padding-right: 1rem; }
+        .py-10 { padding-top: 2.5rem; padding-bottom: 2.5rem; }
+        .mb-10 { margin-bottom: 2.5rem; }
+        .mb-8 { margin-bottom: 2rem; }
+        .mb-3 { margin-bottom: 0.75rem; }
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mt-2 { margin-top: 0.5rem; }
+        .mt-1 { margin-top: 0.25rem; }
+        .my-4 { margin-top: 1rem; margin-bottom: 1rem; }
+        .mr-2 { margin-right: 0.5rem; }
+        .mr-3 { margin-right: 0.75rem; }
+        .flex { display: flex; }
+        .grid { display: grid; }
+        .items-center { align-items: center; }
+        .gap-3 { gap: 0.75rem; }
+        .gap-4 { gap: 1rem; }
+        .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+        .font-bold { font-weight: 700; }
+        .font-semibold { font-weight: 600; }
+        .font-medium { font-weight: 500; }
+        .hidden { display: none !important; }
+        .min-w-full { min-width: 100%; }
+        @media (min-width: 640px) {
+            .sm-px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+        }
+        @media (min-width: 1024px) {
+            .lg-px-8 { padding-left: 2rem; padding-right: 2rem; }
+        }
+
+        /* ── Spinner ── */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner { animation: spin 0.7s linear infinite; }
+
+        .loading-bar {
+            display: flex; align-items: center; gap: 12px;
+            padding: 16px 20px; margin-bottom: 20px; border-radius: 10px;
+            background-color: #272941; border: 1px solid #363960;
+            color: #a5a9c0; font-size: 0.9rem;
+        }
+
+        /* ── Buttons ── */
+        .btn-primary {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 10px 20px; font-size: 0.875rem; font-weight: 600;
+            color: #fff; background: linear-gradient(135deg, #818cf8, #6366f1);
+            border: none; border-radius: 8px; cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.2s, opacity 0.2s;
+            box-shadow: 0 2px 10px rgba(129, 140, 248, 0.35);
+        }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(129, 140, 248, 0.45); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-outline-danger {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 9px 18px; font-size: 0.85rem; font-weight: 600;
+            color: #f87171; background: transparent;
+            border: 1px solid rgba(248, 113, 113, 0.4); border-radius: 8px; cursor: pointer;
+            transition: background-color 0.15s, border-color 0.15s;
+        }
+        .btn-outline-danger:hover:not(:disabled) { background-color: rgba(248, 113, 113, 0.12); border-color: rgba(248, 113, 113, 0.6); }
+        .btn-outline-danger:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-outline-success {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 9px 18px; font-size: 0.85rem; font-weight: 600;
+            color: #4ade80; background: transparent;
+            border: 1px solid rgba(74, 222, 128, 0.4); border-radius: 8px; cursor: pointer;
+            transition: background-color 0.15s, border-color 0.15s;
+        }
+        .btn-outline-success:hover:not(:disabled) { background-color: rgba(74, 222, 128, 0.12); border-color: rgba(74, 222, 128, 0.6); }
+        .btn-outline-success:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .btn-sm {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 5px 14px; font-size: 0.8rem; font-weight: 600;
+            border: none; border-radius: 6px; cursor: pointer;
+            transition: transform 0.15s, background-color 0.15s;
+        }
+        .btn-sm:hover:not(:disabled) { transform: scale(1.05); }
+        .btn-sm.bg-red-600 { background-color: #ef4444; color: #fff; }
+        .btn-sm.bg-red-600:hover:not(:disabled) { background-color: #dc2626; }
+        .btn-sm.btn-cancel { background-color: rgba(156, 163, 175, 0.18); color: #d1d5db; }
+        .btn-sm.btn-cancel:hover:not(:disabled) { background-color: rgba(156, 163, 175, 0.3); }
+
+        .btn-sm-outline-danger {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 4px 12px; font-size: 0.8rem; font-weight: 600;
+            color: #fca5a5; background: transparent;
+            border: 1px solid rgba(248, 113, 113, 0.35); border-radius: 6px; cursor: pointer;
+            transition: background-color 0.15s, border-color 0.15s;
+        }
+        .btn-sm-outline-danger:hover { background-color: rgba(248, 113, 113, 0.12); border-color: rgba(248, 113, 113, 0.55); }
+
+        .btn-sm-outline-success {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 4px 12px; font-size: 0.8rem; font-weight: 600;
+            color: #86efac; background: transparent;
+            border: 1px solid rgba(74, 222, 128, 0.35); border-radius: 6px; cursor: pointer;
+            transition: background-color 0.15s, border-color 0.15s;
+        }
+        .btn-sm-outline-success:hover { background-color: rgba(74, 222, 128, 0.12); border-color: rgba(74, 222, 128, 0.55); }
+
+        /* ── Table ── */
+        .th {
+            padding: 14px 20px; text-align: left; font-size: 0.7rem; font-weight: 600;
+            color: #a5a9c0; text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap;
+        }
+        .td { padding: 14px 20px; white-space: nowrap; font-size: 0.875rem; color: #d4d7e3; }
+        table { border-collapse: collapse; }
+
+        /* ── Badges ── */
+        .badge-blue, .badge-green, .badge-red, .badge-gray {
+            display: inline-flex; align-items: center;
+            padding: 3px 10px; border-radius: 9999px; font-size: 0.75rem; font-weight: 600;
+        }
+        .badge-blue { background-color: rgba(129, 140, 248, 0.2); color: #a5b4fc; }
+        .badge-green { background-color: rgba(74, 222, 128, 0.18); color: #86efac; }
+        .badge-red { background-color: rgba(248, 113, 113, 0.18); color: #fca5a5; }
+        .badge-gray { background-color: rgba(165, 169, 192, 0.15); color: #c8cade; }
+
+        /* ── Status Bar ── */
+        .app-status-bar {
+            display: flex; align-items: center; gap: 10px;
+            padding: 10px 18px; margin-bottom: 20px; border-radius: 10px;
+            background-color: #272941; border: 1px solid #363960;
+        }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .status-dot-green { background-color: #4ade80; box-shadow: 0 0 6px rgba(74, 222, 128, 0.5); }
+        .status-dot-red { background-color: #f87171; box-shadow: 0 0 6px rgba(248, 113, 113, 0.5); }
+        .status-dot-yellow { background-color: #fbbf24; box-shadow: 0 0 6px rgba(251, 191, 36, 0.5); }
+
+        /* ── Apply Bar ── */
+        .apply-bar {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 20px; margin-top: 12px; border-radius: 10px;
+            background-color: rgba(129, 140, 248, 0.1); border: 1px solid rgba(129, 140, 248, 0.25);
+        }
+
+        /* ── Confirm Bar ── */
+        .confirm-bar-danger {
+            display: inline-flex; align-items: center; gap: 10px;
+            padding: 6px 14px; border-radius: 8px; font-size: 0.85rem; font-weight: 600;
+            color: #fca5a5; background-color: rgba(153, 27, 27, 0.25);
+            border: 1px solid rgba(248, 113, 113, 0.35);
+        }
+
+        /* ── Alert Boxes ── */
+        .error-box {
+            background-color: rgba(153, 27, 27, 0.3); border: 1px solid rgba(248, 113, 113, 0.35);
+            color: #fca5a5; padding: 14px 18px; border-radius: 10px; margin-bottom: 24px;
+            display: flex; align-items: center; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .success-box {
+            background-color: rgba(22, 101, 52, 0.3); border: 1px solid rgba(74, 222, 128, 0.35);
+            color: #86efac; padding: 14px 18px; border-radius: 10px; margin-bottom: 24px;
+            display: flex; align-items: center; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        /* ── URL & Actions ── */
+        .url-cell { font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; font-size: 0.75rem; color: #67e8f9; }
+        .actions-cell { display: flex; align-items: center; gap: 8px; padding: 14px 20px; justify-content: center; }
+        .working-text { display: flex; align-items: center; font-size: 0.85rem; color: #fbbf24; font-style: italic; }
+
+        /* ── Empty State ── */
+        .empty-state {
+            text-align: center; padding: 80px 24px;
+            background-color: rgba(40, 42, 62, 0.5); border-radius: 12px; border: 1px dashed #454868;
+        }
+
+        /* ── Invocation / Trace ── */
+        .invocation-row { user-select: none; cursor: pointer; transition: background-color 0.15s; }
+        .invocation-row:hover { background-color: rgba(99, 102, 241, 0.05); }
+        .invocation-row.expanded { background-color: rgba(99, 102, 241, 0.08); }
+
+        .trace-panel { background-color: rgba(24, 25, 39, 0.9); border-top: 1px solid rgba(69, 72, 104, 0.5); }
+        .trace-entries { max-height: 24rem; overflow-y: auto; }
+        .trace-entries > * + * { border-top: 1px solid rgba(69, 72, 104, 0.35); }
+        .trace-entry {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 8px 20px; font-size: 0.875rem; transition: background-color 0.15s;
+        }
+        .trace-entry:hover { background-color: rgba(69, 72, 104, 0.2); }
+        .trace-timestamp { color: #7e82a0; font-family: 'SF Mono', 'Cascadia Code', monospace; font-size: 0.75rem; flex-shrink: 0; width: 6rem; }
+        .trace-severity {
+            display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 4px;
+            font-size: 0.75rem; font-weight: 600; flex-shrink: 0; width: 6rem; justify-content: center;
+        }
+        .severity-0 { background-color: rgba(165, 169, 192, 0.15); color: #a5a9c0; }
+        .severity-1 { background-color: rgba(129, 140, 248, 0.18); color: #a5b4fc; }
+        .severity-2 { background-color: rgba(251, 191, 36, 0.18); color: #fde68a; }
+        .severity-3 { background-color: rgba(248, 113, 113, 0.18); color: #fca5a5; }
+        .severity-4 { background-color: rgba(192, 132, 252, 0.18); color: #d8b4fe; }
+        .trace-message { color: #d4d7e3; word-break: break-all; }
+
+        /* ── Card ── */
+        .card {
+            background-color: #272941; border: 1px solid #363960;
+            border-radius: 12px; padding: 28px; margin-bottom: 32px;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+        }
+        .card-divider { border-top: 1px solid #363960; }
+        .table-card {
+            overflow-x: auto; background-color: #272941; border-radius: 12px;
+            border: 1px solid #363960; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+        }
+
+        /* ── Links ── */
+        a.fn-link { color: #818cf8; text-decoration: none; transition: color 0.15s; }
+        a.fn-link:hover { color: #a5b4fc; text-decoration: underline; }
+        a.back-link {
+            color: #a5a9c0; transition: color 0.15s, background-color 0.15s;
+            display: flex; align-items: center; padding: 8px; border-radius: 8px;
+            background-color: rgba(129, 140, 248, 0.1);
+        }
+        a.back-link:hover { color: #e4e6ed; background-color: rgba(129, 140, 248, 0.2); }
+
+        /* ── Scrollbar ── */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background-color: #454868; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #5c5f85; }
+
+        .mono { font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace; }
+
+        /* ── Refresh Button ── */
+        .btn-refresh {
+            margin-left: auto; flex-shrink: 0;
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 40px; height: 40px; border-radius: 10px;
+            background-color: rgba(129, 140, 248, 0.1); border: 1px solid rgba(129, 140, 248, 0.25);
+            color: #818cf8; cursor: pointer;
+            transition: background-color 0.15s, transform 0.2s, color 0.15s;
+        }
+        .btn-refresh:hover { background-color: rgba(129, 140, 248, 0.2); color: #a5b4fc; }
+
+        /* ── Pending Tags ── */
+        .pending-tag {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 3px 8px; border-radius: 4px;
+            font-size: 0.75rem; font-weight: 600; margin-right: 6px;
+            white-space: nowrap;
+        }
+        .pending-dot {
+            width: 6px; height: 6px; border-radius: 50%;
+            animation: pulse-dot 1.5s ease-in-out infinite;
+        }
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        .pending-stop { background-color: rgba(248, 113, 113, 0.15); color: #fca5a5; border: 1px solid rgba(248, 113, 113, 0.3); }
+        .pending-stop .pending-dot { background-color: #fca5a5; }
+        .pending-start { background-color: rgba(74, 222, 128, 0.15); color: #86efac; border: 1px solid rgba(74, 222, 128, 0.3); }
+        .pending-start .pending-dot { background-color: #86efac; }
+
+        /* ── Time Range Segmented Control ── */
+        .time-picker {
+            display: inline-flex; align-items: center;
+            background: rgba(165, 169, 192, 0.08);
+            border: 1px solid rgba(165, 169, 192, 0.15);
+            border-radius: 8px; padding: 3px; gap: 2px;
+        }
+        .time-btn {
+            padding: 5px 14px; font-size: 0.8rem; font-weight: 600;
+            color: #787d9a; background: transparent;
+            border: none; border-radius: 6px;
+            cursor: pointer; transition: all 0.2s ease;
+            position: relative;
+        }
+        .time-btn:hover { color: #c4c8e0; background: rgba(129, 140, 248, 0.08); }
+        .time-btn.active {
+            color: #e0e7ff; background: rgba(129, 140, 248, 0.2);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .limit-select {
+            padding: 5px 10px; font-size: 0.8rem; font-weight: 600;
+            color: #787d9a; background: rgba(165, 169, 192, 0.08);
+            border: 1px solid rgba(165, 169, 192, 0.15); border-radius: 8px;
+            cursor: pointer; appearance: auto; transition: all 0.2s ease;
+        }
+        .limit-select:hover { color: #c4c8e0; border-color: rgba(129, 140, 248, 0.25); }
+        .limit-select:focus { outline: none; color: #e0e7ff; border-color: rgba(129, 140, 248, 0.4); }
+
+        /* ── Stats Bar ── */
+        .stats-bar {
+            display: flex; align-items: center; gap: 16px;
+            padding: 10px 16px; border-radius: 8px;
+            background-color: #272941; border: 1px solid #363960;
+            font-size: 0.85rem; color: #a5a9c0;
+        }
+        .stat-item { display: flex; align-items: center; gap: 6px; }
+        .stat-value { font-weight: 700; font-size: 1rem; }
+        .stat-divider { width: 1px; height: 20px; background: #363960; }
+        .btn-refresh:active { transform: rotate(180deg); }
+        .btn-refresh.spinning svg { animation: spin 0.7s linear infinite; }
+
+        /* ── Info Banner ── */
+        .info-banner {
+            display: flex; align-items: flex-start; gap: 12px;
+            padding: 14px 18px; border-radius: 10px; margin-bottom: 24px;
+            background-color: rgba(56, 89, 138, 0.25); border: 1px solid rgba(96, 165, 250, 0.3);
+            color: #93c5fd; font-size: 0.875rem; line-height: 1.5;
+        }
+        .info-banner-dismiss {
+            margin-left: auto; flex-shrink: 0; background: none; border: none;
+            color: #93c5fd; cursor: pointer; padding: 2px; opacity: 0.6;
+            transition: opacity 0.15s;
+        }
+        .info-banner-dismiss:hover { opacity: 1; }
+    </style>
+</head>
+<body>
+<div class="max-w-7xl mx-auto px-4 py-10" id="app">
+    <!-- ═══ HOME VIEW ═══ -->
+    <div id="view-home">
+        <header class="mb-10">
+            <h1 style="font-size: 1.875rem; font-weight: 700; letter-spacing: -0.025em; color: #f3f4f6;">Container App Functions</h1>
+        </header>
+
+        <div id="permissions-banner" class="info-banner">
+            <svg style="width:20px;height:20px;flex-shrink:0;margin-top:1px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <div>
+                <strong style="color:#bfdbfe;">Before you start:</strong>
+                Ensure you have the necessary permissions on the Container App and Application Insights resources.
+                Write access (e.g. <em>Contributor</em>) is required for stopping the app and disabling functions &mdash; activate via PIM if needed.
+                <br style="margin-top:6px;">
+                <span style="color:#a5b4fc;">Note:</span> Disabling functions sets <code style="background:rgba(129,140,248,0.15);padding:1px 5px;border-radius:4px;font-size:0.8rem;">AzureWebJobs_&lt;name&gt;_Disabled</code> environment variables and creates a new revision. These changes will be overridden by the next deployment.
+            </div>
+            <button class="info-banner-dismiss" onclick="dismissBanner()" title="Dismiss">
+                <svg style="width:18px;height:18px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div id="loading-bar" class="loading-bar hidden">
+            <svg class="spinner" style="width:20px;height:20px;color:#818cf8;" fill="none" viewBox="0 0 24 24">
+                <circle style="opacity:0.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path style="opacity:0.75;" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Fetching data from Azure...</span>
+        </div>
+
+        <div id="status-bar" class="app-status-bar hidden"></div>
+        <div id="error-box" class="error-box hidden"></div>
+        <div id="success-box" class="success-box hidden"></div>
+        <div id="fn-summary" class="hidden flex items-center text-sm my-4" style="color:#a5a9c0;">
+            <span id="fn-summary-text"></span>
+            <button id="btn-refresh" class="btn-refresh" onclick="loadFunctions()" title="Refresh" style="width:32px;height:32px;margin-left:12px;">
+                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+            </button>
+        </div>
+        <div id="fn-table-wrap" class="table-card hidden">
+            <table class="min-w-full">
+                <thead style="background-color:#1e1f33;">
+                    <tr>
+                        <th class="th" style="width:140px;text-align:center;">Actions</th>
+                        <th class="th">Name</th>
+                        <th class="th" style="width:120px;">Trigger</th>
+                        <th class="th" style="width:100px;">Language</th>
+                        <th class="th" style="width:120px;text-align:center;">Status</th>
+                        <th class="th">Invoke URL</th>
+                    </tr>
+                </thead>
+                <tbody id="fn-tbody"></tbody>
+            </table>
+        </div>
+        <div id="empty-state" class="empty-state hidden">
+            <svg style="width:80px;height:80px;color:#4b5563;margin:0 auto 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path></svg>
+            <h3 style="font-size:1.25rem;font-weight:600;color:#d1d5db;">No functions found.</h3>
+            <p style="color:#6b7280;margin-top:0.5rem;">Try ensuring the container app is running.</p>
+        </div>
+        <div id="apply-bar" class="apply-bar hidden"></div>
+        <div id="accepted-info" class="hidden" style="margin-top:12px;padding:12px 18px;border-radius:10px;background-color:rgba(22,101,52,0.2);border:1px solid rgba(74,222,128,0.25);color:#86efac;font-size:0.875rem;display:flex;align-items:center;gap:10px;">
+            <svg style="width:18px;height:18px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span id="accepted-info-text"></span>
+        </div>
+    </div>
+
+    <!-- ═══ DETAIL VIEW ═══ -->
+    <div id="view-detail" class="hidden">
+        <header class="mb-8 flex items-center gap-4">
+            <a href="#/" class="back-link">
+                <svg style="width:20px;height:20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </a>
+            <div>
+                <h1 id="detail-title" style="font-size:1.875rem;font-weight:700;letter-spacing:-0.025em;color:#f3f4f6;"></h1>
+                <p class="mt-1 text-sm" style="color:#a5a9c0;">Invocation history from Application Insights</p>
+            </div>
+        </header>
+
+        <div id="detail-counts" class="hidden mb-3"></div>
+
+        <div class="flex items-center gap-4 mb-3" style="flex-wrap:wrap;">
+            <div class="time-picker">
+                <button class="time-btn" data-ts="PT1H" onclick="setTimeRange('PT1H')">1h</button>
+                <button class="time-btn" data-ts="PT6H" onclick="setTimeRange('PT6H')">6h</button>
+                <button class="time-btn active" data-ts="P1D" onclick="setTimeRange('P1D')">24h</button>
+                <button class="time-btn" data-ts="P7D" onclick="setTimeRange('P7D')">7d</button>
+                <button class="time-btn" data-ts="P30D" onclick="setTimeRange('P30D')">30d</button>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-sm" style="color:#787d9a;">Show:</span>
+                <select id="limit-select" class="limit-select" onchange="setLimit(this.value)">
+                    <option value="25">25</option>
+                    <option value="50" selected>50</option>
+                    <option value="100">100</option>
+                    <option value="200">200</option>
+                </select>
+            </div>
+        </div>
+
+        <div id="detail-stats" class="hidden mb-3"></div>
+
+        <div id="detail-loading" class="loading-bar hidden" style="justify-content:center;padding:48px 20px;">
+            <svg class="spinner" style="width:24px;height:24px;color:#818cf8;" fill="none" viewBox="0 0 24 24">
+                <circle style="opacity:0.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path style="opacity:0.75;" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>Loading invocations from Application Insights...</span>
+        </div>
+
+        <div id="detail-error" class="error-box hidden"></div>
+
+        <div id="detail-empty" class="empty-state hidden">
+            <svg style="width:64px;height:64px;color:#4b5563;margin:0 auto 20px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+            <h3 style="font-size:1.25rem;font-weight:600;color:#d1d5db;">No recent invocations found</h3>
+            <p id="detail-empty-text" class="mt-2" style="color:#a5a9c0;">No invocation data was found in Application Insights for the selected time range.</p>
+        </div>
+
+        <div id="detail-summary" class="text-sm mb-3 hidden" style="color:#a5a9c0;"></div>
+        <div id="detail-table-wrap" class="table-card hidden">
+            <table class="min-w-full">
+                <thead style="background-color:#1e1f33;">
+                    <tr>
+                        <th class="th" style="width:180px;">Timestamp</th>
+                        <th class="th" style="width:100px;text-align:center;">Status</th>
+                        <th class="th" style="width:80px;text-align:center;">Code</th>
+                        <th class="th" style="width:110px;text-align:right;">Duration</th>
+                        <th class="th">Invocation ID</th>
+                    </tr>
+                </thead>
+                <tbody id="detail-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    'use strict';
+
+    const API = window.location.pathname.replace(/\/$/, '');
+
+    // ── State ──
+    const state = {
+        functions: null,
+        loading: false,
+        error: null,
+        successMessage: null,
+        appName: '',
+        runningStatus: null,
+        latestRevision: '',
+        pendingEnable: new Set(),
+        pendingDisable: new Set(),
+        operationsInProgress: new Set(),
+        applyingChanges: false,
+        confirmingApply: false,
+        accepted: new Map(), // name → 'disabled' | 'enabled'
+        confirmingStopApp: false,
+
+        currentFunction: null,
+        selectedTimespan: 'P1D',
+        selectedLimit: 50,
+        counts: null,
+        invocations: null,
+        detailLoading: false,
+        detailError: null,
+        expandedOperationId: null,
+        traces: null,
+        tracesLoading: false,
+        tracesError: null,
+    };
+
+    // ── Helpers ──
+    const $ = id => document.getElementById(id);
+    const show = (el, vis) => { if (typeof el === 'string') el = $(el); el.classList.toggle('hidden', !vis); };
+
+    function esc(s) {
+        const d = document.createElement('div');
+        d.textContent = s;
+        return d.innerHTML;
+    }
+
+    function formatDuration(ms) {
+        if (ms < 1000) return Math.round(ms) + ' ms';
+        if (ms < 60000) return (ms / 1000).toFixed(1) + ' s';
+        const m = Math.floor(ms / 60000);
+        const s = Math.round((ms % 60000) / 1000);
+        return m + 'm ' + s + 's';
+    }
+
+    function formatTime(iso) {
+        const d = new Date(iso);
+        if (isNaN(d)) return '';
+        const pad = n => String(n).padStart(2, '0');
+        return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+    }
+
+    function formatTimeShort(iso) {
+        const d = new Date(iso);
+        if (isNaN(d)) return '';
+        const pad = (n, l) => String(n).padStart(l || 2, '0');
+        return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) + '.' + pad(d.getMilliseconds(), 3);
+    }
+
+    const spinnerSvg = (w) => `<svg class="spinner" style="width:${w}px;height:${w}px;" fill="none" viewBox="0 0 24 24"><circle style="opacity:0.25;" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path style="opacity:0.75;" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>`;
+
+    async function api(path, opts) {
+        const res = await fetch(API + path, opts);
+        const text = await res.text();
+        let body;
+        try { body = JSON.parse(text); } catch { body = null; }
+        if (!res.ok) throw new Error(body?.error || text || `Request failed (${res.status})`);
+        return body;
+    }
+
+    // ── Permissions banner ──
+    function dismissBanner() {
+        const el = $('permissions-banner');
+        if (el) el.remove();
+        try { localStorage.setItem('dashboard-banner-dismissed', '1'); } catch {}
+    }
+    try { if (localStorage.getItem('dashboard-banner-dismissed')) dismissBanner(); } catch {}
+    window.dismissBanner = dismissBanner;
+
+    // ── Expose globals for inline onclick ──
+    window.loadFunctions = loadFunctions;
+    window.startApp = startApp;
+    window.showStopConfirm = showStopConfirm;
+    window.confirmStopApp = confirmStopApp;
+    window.cancelStopConfirm = cancelStopConfirm;
+    window.queueEnable = queueEnable;
+    window.queueDisable = queueDisable;
+    window.cancelPending = cancelPending;
+    window.discardAll = discardAll;
+    window.showApplyConfirm = showApplyConfirm;
+    window.cancelApplyConfirm = cancelApplyConfirm;
+    window.applyChanges = applyChanges;
+    window.toggleTraces = toggleTraces;
+    window.setTimeRange = setTimeRange;
+    window.setLimit = setLimit;
+
+    // ── Router ──
+    function route() {
+        const hash = location.hash || '#/';
+        const match = hash.match(/^#\/function\/(.+)$/);
+        if (match) {
+            const name = decodeURIComponent(match[1]);
+            showDetailView(name);
+        } else {
+            showHomeView();
+        }
+    }
+
+    window.addEventListener('hashchange', route);
+
+    function showHomeView() {
+        show('view-home', true);
+        show('view-detail', false);
+        state.currentFunction = null;
+        state.invocations = null;
+        state.expandedOperationId = null;
+        state.traces = null;
+    }
+
+    function showDetailView(name) {
+        show('view-home', false);
+        show('view-detail', true);
+        state.currentFunction = name;
+        $('detail-title').textContent = name;
+        loadInvocations(name);
+    }
+
+    // ── Home: Render ──
+    function renderHome() {
+        // Loading
+        show('loading-bar', state.loading);
+
+        // Spin the refresh icon while loading
+        const refreshBtn = $('btn-refresh');
+        if (refreshBtn) refreshBtn.classList.toggle('spinning', state.loading);
+
+        // Status bar (with app controls)
+        if (state.runningStatus) {
+            show('status-bar', true);
+            let dotClass, badgeClass, label;
+            const rs = (state.runningStatus || '').toLowerCase();
+            if (rs === 'running') { dotClass = 'status-dot-green'; badgeClass = 'badge-green'; label = 'Running'; }
+            else if (rs === 'stopped') { dotClass = 'status-dot-red'; badgeClass = 'badge-red'; label = 'Stopped'; }
+            else { dotClass = 'status-dot-yellow'; badgeClass = 'badge-gray'; label = state.runningStatus; }
+            $('status-bar').innerHTML = `<span style="color:#a5a9c0;font-size:0.85rem;">Container App</span>
+                <strong style="color:#e4e6ed;font-size:0.85rem;">${esc(state.appName)}</strong>
+                <span class="status-dot ${dotClass}"></span>
+                <span class="${badgeClass}">${esc(label)}</span>
+                <div class="flex items-center gap-3" style="margin-left:auto;">
+                    <button class="btn-outline-success" style="padding:5px 14px;font-size:0.8rem;" onclick="startApp()"${state.loading ? ' disabled' : ''}>Start App</button>
+                    <span id="stop-app-area"><button class="btn-outline-danger" style="padding:5px 14px;font-size:0.8rem;" onclick="showStopConfirm()"${state.loading ? ' disabled' : ''}>Stop App</button></span>
+                </div>`;
+        } else {
+            show('status-bar', false);
+        }
+
+        // Error
+        if (state.error) {
+            show('error-box', true);
+            $('error-box').innerHTML = `<svg style="width:20px;height:20px;margin-right:12px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <div><h4 class="font-bold">Error</h4><p>${esc(state.error)}</p></div>`;
+        } else {
+            show('error-box', false);
+        }
+
+        // Success
+        if (state.successMessage) {
+            show('success-box', true);
+            $('success-box').innerHTML = `<svg style="width:20px;height:20px;margin-right:12px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <div><h4 class="font-bold">Success</h4><p>${esc(state.successMessage)}</p></div>`;
+        } else {
+            show('success-box', false);
+        }
+
+        // Stop confirm (rendered inside status bar)
+        const stopArea = $('stop-app-area');
+        if (stopArea) {
+            if (state.confirmingStopApp) {
+                stopArea.innerHTML = `<div class="confirm-bar-danger">
+                    <svg style="width:14px;height:14px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    <span>Stop the entire app?</span>
+                    <button class="btn-sm bg-red-600" onclick="confirmStopApp()">Stop</button>
+                    <button class="btn-sm btn-cancel" onclick="cancelStopConfirm()">Cancel</button>
+                </div>`;
+            } else {
+                stopArea.innerHTML = `<button class="btn-outline-danger" style="padding:5px 14px;font-size:0.8rem;" onclick="showStopConfirm()"${state.loading ? ' disabled' : ''}>Stop App</button>`;
+            }
+        }
+
+        // Function list
+        if (state.functions === null) {
+            show('fn-summary', false);
+            show('fn-table-wrap', false);
+            show('empty-state', false);
+        } else if (state.functions.length === 0) {
+            show('fn-summary', false);
+            show('fn-table-wrap', false);
+            show('empty-state', true);
+        } else {
+            show('empty-state', false);
+            show('fn-summary', true);
+            $('fn-summary-text').innerHTML = `Found <strong style="color:#d4d7e3;">${state.functions.length}</strong> function(s) <span class="badge-blue" style="font-size:0.8rem;">${esc(state.latestRevision)}</span>`;
+            show('fn-table-wrap', true);
+            renderFunctionRows();
+        }
+
+        // Apply bar
+        renderApplyBar();
+
+        // Accepted info
+        if (state.accepted.size > 0) {
+            show('accepted-info', true);
+            $('accepted-info-text').innerHTML = `<strong>${state.accepted.size}</strong> function(s) updated. A new revision is being created &mdash; changes may take a moment to take effect. Refresh to see the latest state.`;
+        } else {
+            show('accepted-info', false);
+        }
+    }
+
+    function renderFunctionRows() {
+        const tbody = $('fn-tbody');
+        let html = '';
+        for (const fn of state.functions) {
+            const inProgress = state.operationsInProgress.has(fn.name);
+            const rowStyle = inProgress ? 'opacity:0.4;pointer-events:none;' : '';
+
+            const acceptedAction = state.accepted.get(fn.name);
+            let actionsHtml;
+            if (inProgress) {
+                actionsHtml = `<span class="working-text">${spinnerSvg(16)}<span style="margin-left:8px;">Applying...</span></span>`;
+            } else if (acceptedAction) {
+                const isStop = acceptedAction === 'disabled';
+                const tagClass = isStop ? 'pending-stop' : 'pending-start';
+                const label = isStop ? 'Stopped' : 'Started';
+                actionsHtml = `<span class="pending-tag ${tagClass}" style="cursor:default;"><svg style="width:12px;height:12px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>${label}</span>`;
+            } else if (state.pendingDisable.has(fn.name)) {
+                actionsHtml = `<span class="pending-tag pending-stop"><span class="pending-dot"></span>Will disable</span><button class="btn-sm btn-cancel" onclick="cancelPending('${esc(fn.name)}')">Undo</button>`;
+            } else if (state.pendingEnable.has(fn.name)) {
+                actionsHtml = `<span class="pending-tag pending-start"><span class="pending-dot"></span>Will enable</span><button class="btn-sm btn-cancel" onclick="cancelPending('${esc(fn.name)}')">Undo</button>`;
+            } else if (fn.isDisabled) {
+                actionsHtml = `<button class="btn-sm-outline-success" onclick="queueEnable('${esc(fn.name)}')">Start</button>`;
+            } else {
+                actionsHtml = `<button class="btn-sm-outline-danger" onclick="queueDisable('${esc(fn.name)}')">Stop</button>`;
+            }
+
+            const statusBadge = fn.isDisabled
+                ? '<span class="badge-red">Disabled</span>'
+                : '<span class="badge-green">Active</span>';
+
+            html += `<tr style="border-top:1px solid #363960;transition:background-color 0.15s;${rowStyle}">
+                <td class="actions-cell">${actionsHtml}</td>
+                <td class="td" style="font-weight:500;"><a href="#/function/${encodeURIComponent(fn.name)}" class="fn-link">${esc(fn.name)}</a></td>
+                <td class="td"><span class="badge-gray">${esc(fn.triggerType || '')}</span></td>
+                <td class="td">${esc(fn.language || 'N/A')}</td>
+                <td class="td" style="text-align:center;">${statusBadge}</td>
+                <td class="td url-cell">${esc(fn.invokeUrlTemplate || '')}</td>
+            </tr>`;
+        }
+        tbody.innerHTML = html;
+    }
+
+    function renderApplyBar() {
+        const total = state.pendingDisable.size + state.pendingEnable.size;
+        if (total === 0 && !state.applyingChanges) { show('apply-bar', false); return; }
+        show('apply-bar', true);
+
+        let summary = `<strong>${total}</strong> change(s) pending`;
+        if (state.pendingDisable.size > 0) summary += ` <span style="color:#fca5a5;">&mdash; ${state.pendingDisable.size} to disable</span>`;
+        if (state.pendingEnable.size > 0) summary += ` <span style="color:#86efac;">&mdash; ${state.pendingEnable.size} to enable</span>`;
+
+        let rightHtml;
+        if (state.applyingChanges) {
+            rightHtml = `<button class="btn-primary" style="padding:7px 18px;font-size:0.85rem;" disabled>${spinnerSvg(14)}<span style="margin-left:8px;">Applying...</span></button>`;
+        } else if (state.confirmingApply) {
+            rightHtml = `<div class="confirm-bar-danger">
+                <svg style="width:14px;height:14px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <span>Apply changes? This will create a new revision.</span>
+                <button class="btn-sm" style="background:#6366f1;color:#fff;" onclick="applyChanges()">Apply</button>
+                <button class="btn-sm btn-cancel" onclick="cancelApplyConfirm()">Cancel</button>
+            </div>`;
+        } else {
+            rightHtml = `<button class="btn-primary" style="padding:7px 18px;font-size:0.85rem;" onclick="showApplyConfirm()">Apply Changes</button>`;
+        }
+
+        $('apply-bar').innerHTML = `<span style="color:#e4e6ed;font-size:0.9rem;">${summary}</span>
+            <div class="flex items-center gap-3" style="margin-left:auto;">
+                <button class="btn-sm btn-cancel" onclick="discardAll()">Discard All</button>
+                ${rightHtml}
+            </div>`;
+    }
+
+    // ── Home: Actions ──
+    async function loadFunctions() {
+        state.loading = true;
+        state.error = null;
+        state.successMessage = null;
+        state.functions = null;
+        state.accepted.clear();
+        renderHome();
+
+        try {
+            const status = await api('/status');
+            state.appName = status.appName || '';
+            state.runningStatus = status.runningStatus;
+            state.latestRevision = status.latestRevision || '';
+
+            if ((state.runningStatus || '').toLowerCase() === 'stopped') {
+                state.functions = [];
+                state.error = 'Container App is stopped. Start the app to list functions.';
+            } else {
+                state.functions = await api('/functions');
+            }
+        } catch (e) {
+            state.error = e.message;
+        } finally {
+            state.loading = false;
+            renderHome();
+        }
+    }
+
+    async function startApp() {
+        state.loading = true;
+        state.error = null;
+        state.successMessage = null;
+        renderHome();
+        try {
+            const res = await api('/app/start', { method: 'POST' });
+            state.runningStatus = 'Running';
+            state.successMessage = res.message;
+        } catch (e) { state.error = e.message; }
+        finally { state.loading = false; renderHome(); }
+    }
+
+    function showStopConfirm() { state.confirmingStopApp = true; renderHome(); }
+    function cancelStopConfirm() { state.confirmingStopApp = false; renderHome(); }
+
+    async function confirmStopApp() {
+        state.confirmingStopApp = false;
+        state.loading = true;
+        state.error = null;
+        state.successMessage = null;
+        renderHome();
+        try {
+            const res = await api('/app/stop', { method: 'POST' });
+            state.runningStatus = 'Stopped';
+            state.successMessage = res.message;
+        } catch (e) { state.error = e.message; }
+        finally { state.loading = false; renderHome(); }
+    }
+
+    function queueEnable(name) { state.pendingDisable.delete(name); state.pendingEnable.add(name); renderHome(); }
+    function queueDisable(name) { state.pendingEnable.delete(name); state.pendingDisable.add(name); renderHome(); }
+    function cancelPending(name) { state.pendingEnable.delete(name); state.pendingDisable.delete(name); renderHome(); }
+    function discardAll() { state.pendingEnable.clear(); state.pendingDisable.clear(); state.confirmingApply = false; renderHome(); }
+    function showApplyConfirm() { state.confirmingApply = true; renderHome(); }
+    function cancelApplyConfirm() { state.confirmingApply = false; renderHome(); }
+
+    async function applyChanges() {
+        const toEnable = [...state.pendingEnable];
+        const toDisable = [...state.pendingDisable];
+        if (toEnable.length === 0 && toDisable.length === 0) return;
+
+        for (const n of [...toEnable, ...toDisable]) state.operationsInProgress.add(n);
+        state.pendingEnable.clear();
+        state.pendingDisable.clear();
+        state.confirmingApply = false;
+        state.applyingChanges = true;
+        state.error = null;
+        state.successMessage = null;
+        renderHome();
+
+        try {
+            await api('/functions/update', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ disable: toDisable, enable: toEnable })
+            });
+
+            // Optimistically update local state
+            for (const fn of state.functions || []) {
+                if (toDisable.includes(fn.name)) fn.isDisabled = true;
+                if (toEnable.includes(fn.name)) fn.isDisabled = false;
+            }
+
+            // Mark rows as accepted
+            for (const n of toDisable) state.accepted.set(n, 'disabled');
+            for (const n of toEnable) state.accepted.set(n, 'enabled');
+        } catch (e) {
+            state.error = 'Failed to apply changes: ' + e.message;
+        } finally {
+            for (const n of [...toEnable, ...toDisable]) state.operationsInProgress.delete(n);
+            state.applyingChanges = false;
+            renderHome();
+        }
+    }
+
+    // ── Detail: Load ──
+    function setTimeRange(ts) {
+        state.selectedTimespan = ts;
+        document.querySelectorAll('.time-btn').forEach(b => b.classList.toggle('active', b.dataset.ts === ts));
+        if (state.currentFunction) loadInvocations(state.currentFunction, { refreshCounts: false });
+    }
+
+    function setLimit(val) {
+        state.selectedLimit = parseInt(val) || 50;
+        if (state.currentFunction) loadInvocations(state.currentFunction, { refreshCounts: false });
+    }
+
+    async function loadInvocations(name, { refreshCounts = true } = {}) {
+        state.detailLoading = true;
+        state.detailError = null;
+        state.invocations = null;
+        state.expandedOperationId = null;
+        state.traces = null;
+        if (refreshCounts) state.counts = null;
+        renderDetail();
+
+        try {
+            const encodedName = encodeURIComponent(name);
+            const invocationsPromise = api(`/invocations/${encodedName}?timespan=${state.selectedTimespan}&limit=${state.selectedLimit}`);
+
+            if (refreshCounts) {
+                const [invocations, counts] = await Promise.all([
+                    invocationsPromise,
+                    api(`/invocations/${encodedName}/counts?timespan=P30D`)
+                ]);
+                state.invocations = invocations;
+                state.counts = counts;
+            } else {
+                state.invocations = await invocationsPromise;
+            }
+        } catch (e) {
+            state.detailError = e.message;
+        } finally {
+            state.detailLoading = false;
+            renderDetail();
+        }
+    }
+
+    function renderDetail() {
+        show('detail-loading', state.detailLoading);
+
+        if (state.detailError) {
+            show('detail-error', true);
+            $('detail-error').innerHTML = `<svg style="width:20px;height:20px;margin-right:12px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                <div><strong>Error</strong><p style="margin:2px 0 0;">${esc(state.detailError)}</p></div>`;
+        } else { show('detail-error', false); }
+
+        // 90-day counts (always shown when available, independent of time range)
+        if (state.counts) {
+            show('detail-counts', true);
+            $('detail-counts').innerHTML = `<div class="stats-bar">
+                <div class="stat-item"><span style="color:#a5a9c0;">Last 30 days</span></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item"><span style="color:#d4d7e3;">Total</span> <span class="stat-value" style="color:#a5b4fc;">${state.counts.total}</span></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item"><span class="status-dot status-dot-green" style="width:6px;height:6px;"></span> <span style="color:#86efac;">Succeeded</span> <span class="stat-value" style="color:#86efac;">${state.counts.succeeded}</span></div>
+                <div class="stat-divider"></div>
+                <div class="stat-item"><span class="status-dot status-dot-red" style="width:6px;height:6px;"></span> <span style="color:#fca5a5;">Failed</span> <span class="stat-value" style="color:#fca5a5;">${state.counts.failed}</span></div>
+            </div>`;
+        } else { show('detail-counts', false); }
+
+        if (!state.detailLoading && state.invocations !== null) {
+            if (state.invocations.length === 0) {
+                show('detail-empty', true);
+                show('detail-stats', false);
+                show('detail-summary', false);
+                show('detail-table-wrap', false);
+            } else {
+                show('detail-empty', false);
+
+                // Filtered stats for current time range
+                const total = state.invocations.length;
+                const failed = state.invocations.filter(i => !i.success).length;
+                const succeeded = total - failed;
+                const tsLabels = { PT1H: '1 hour', PT6H: '6 hours', P1D: '24 hours', P7D: '7 days', P30D: '30 days' };
+                const tsLabel = tsLabels[state.selectedTimespan] || state.selectedTimespan;
+                show('detail-stats', true);
+                $('detail-stats').innerHTML = `<div class="stats-bar" style="background:transparent;border:none;padding:0;font-size:0.8rem;">
+                    <span style="color:#a5a9c0;">Showing <strong style="color:#d4d7e3;">${total}</strong> invocations from the last <strong style="color:#d4d7e3;">${tsLabel}</strong></span>
+                    ${failed > 0 ? `<span style="color:#fca5a5;">(<strong>${failed}</strong> failed)</span>` : ''}
+                </div>`;
+
+                show('detail-summary', false);
+                show('detail-table-wrap', true);
+                renderInvocationRows();
+            }
+        } else {
+            show('detail-empty', false);
+            show('detail-stats', false);
+            show('detail-summary', false);
+            show('detail-table-wrap', false);
+        }
+    }
+
+    function renderInvocationRows() {
+        const tbody = $('detail-tbody');
+        let html = '';
+        for (const inv of state.invocations) {
+            const isExpanded = state.expandedOperationId === inv.operationId;
+            const statusBadge = inv.success
+                ? '<span class="badge-green">Success</span>'
+                : '<span class="badge-red">Failed</span>';
+
+            html += `<tr class="invocation-row${isExpanded ? ' expanded' : ''}" style="border-top:1px solid #363960;" onclick="toggleTraces('${esc(inv.operationId)}')">
+                <td class="td" style="font-size:0.85rem;">${esc(formatTime(inv.timestamp))}</td>
+                <td class="td" style="text-align:center;">${statusBadge}</td>
+                <td class="td mono" style="text-align:center;font-size:0.75rem;">${esc(inv.resultCode)}</td>
+                <td class="td mono" style="text-align:right;font-size:0.75rem;">${esc(formatDuration(inv.durationMs))}</td>
+                <td class="td mono" style="font-size:0.75rem;color:#a5a9c0;">${esc(inv.invocationId)}</td>
+            </tr>`;
+
+            if (isExpanded) {
+                html += `<tr><td colspan="5" style="padding:0;"><div class="trace-panel">`;
+                if (state.tracesLoading) {
+                    html += `<div style="display:flex;align-items:center;gap:10px;padding:16px 20px;">${spinnerSvg(18)}<span style="color:#a5a9c0;font-size:0.875rem;">Loading traces...</span></div>`;
+                } else if (state.tracesError) {
+                    html += `<div style="padding:16px 20px;color:#f87171;font-size:0.875rem;">${esc(state.tracesError)}</div>`;
+                } else if (state.traces && state.traces.length === 0) {
+                    html += `<div style="padding:16px 20px;color:#a5a9c0;font-size:0.875rem;font-style:italic;">No trace data available for this invocation.</div>`;
+                } else if (state.traces) {
+                    html += '<div class="trace-entries">';
+                    for (const t of state.traces) {
+                        html += `<div class="trace-entry">
+                            <span class="trace-timestamp">${esc(formatTimeShort(t.timestamp))}</span>
+                            <span class="trace-severity severity-${t.severityLevel}">${esc(t.severityLabel)}</span>
+                            <span class="trace-message">${esc(t.message)}</span>
+                        </div>`;
+                    }
+                    html += '</div>';
+                }
+                html += '</div></td></tr>';
+            }
+        }
+        tbody.innerHTML = html;
+    }
+
+    async function toggleTraces(operationId) {
+        if (state.expandedOperationId === operationId) {
+            state.expandedOperationId = null;
+            state.traces = null;
+            state.tracesError = null;
+            renderInvocationRows();
+            return;
+        }
+
+        state.expandedOperationId = operationId;
+        state.traces = null;
+        state.tracesError = null;
+        state.tracesLoading = true;
+        renderInvocationRows();
+
+        try {
+            state.traces = await api('/traces/' + encodeURIComponent(operationId));
+        } catch (e) {
+            state.tracesError = 'Failed to load traces: ' + e.message;
+        } finally {
+            state.tracesLoading = false;
+            renderInvocationRows();
+        }
+    }
+
+    // ── Init ──
+    route();
+    if (!location.hash || location.hash === '#/' || location.hash === '#') {
+        loadFunctions();
+    }
+})();
+</script>
+</body>
+</html>

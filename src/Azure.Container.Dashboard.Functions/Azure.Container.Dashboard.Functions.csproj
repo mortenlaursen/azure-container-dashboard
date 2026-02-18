@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <RootNamespace>Azure.Container.Dashboard</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <PackageId>Azure.Container.Dashboard.Functions</PackageId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.0.0" />
+    <PackageReference Include="Azure.Identity" Version="1.17.1" />
+    <PackageReference Include="System.Text.Json" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="wwwroot\**\*" />
+  </ItemGroup>
+
+</Project>

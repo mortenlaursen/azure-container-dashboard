@@ -57,3 +57,10 @@ public class InvocationTrace
         _ => "Unknown"
     };
 }
+
+public class InvocationCounts
+{
+    public int Total { get; set; }
+    public int Failed { get; set; }
+    public int Succeeded => Total - Failed;
+}
