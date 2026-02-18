@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 using Azure.Core;
 using Azure.Identity;
 
-namespace AzureContainerFunctions;
+namespace Azure.Container.Dashboard;
 
 public class ContainerAppFunctionsClient
 {

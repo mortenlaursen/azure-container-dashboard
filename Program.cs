@@ -1,5 +1,5 @@
-using AzureContainerFunctions;
-using AzureContainerFunctions.Components;
+using Azure.Container.Dashboard;
+using Azure.Container.Dashboard.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 

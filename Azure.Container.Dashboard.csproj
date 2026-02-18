@@ -4,6 +4,8 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <RootNamespace>Azure.Container.Dashboard</RootNamespace>
+    <AssemblyName>Azure.Container.Dashboard</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
