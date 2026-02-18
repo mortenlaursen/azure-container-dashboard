@@ -12,3 +12,9 @@ packages/
 Thumbs.db
 appsettings.Development.json
 .env*
+
+# AI/tool configs
+.gemini/
+.claude/
+.playwright-mcp/
+.specify/
