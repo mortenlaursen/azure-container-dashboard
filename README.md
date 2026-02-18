@@ -12,7 +12,7 @@ A NuGet package that adds a web dashboard to your Azure Functions app for managi
 ## Installation
 
 ```bash
-dotnet add package Azure.Container.Dashboard.Functions
+dotnet add package Schultzz.ContainerApp.Dashboard
 ```
 
 ## Setup

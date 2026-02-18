@@ -6,7 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
-    <PackageId>Azure.Container.Dashboard.Functions</PackageId>
+    <PackageId>Schultzz.ContainerApp.Dashboard</PackageId>
     <Version>1.0.0</Version>
     <Authors>mortenlaursen</Authors>
     <Description>Azure Functions dashboard for managing Azure Container Apps - start, stop, view invocations, and monitor functions.</Description>
