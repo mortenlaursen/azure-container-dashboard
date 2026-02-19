@@ -326,23 +326,54 @@
             transition: opacity 0.15s;
         }
         .info-banner-dismiss:hover { opacity: 1; }
+
+        /* ── Auth UI ── */
+        .auth-user-area {
+            margin-left: auto; display: flex; align-items: center; gap: 10px;
+            position: relative;
+        }
+        .auth-user-name {
+            font-size: 0.85rem; color: #a5b4fc; font-weight: 500;
+        }
+        .auth-signout-btn {
+            padding: 5px 12px; font-size: 0.8rem; font-weight: 600;
+            color: #a5a9c0; background: rgba(165, 169, 192, 0.1);
+            border: 1px solid rgba(165, 169, 192, 0.2); border-radius: 6px;
+            cursor: pointer; transition: all 0.15s; text-decoration: none;
+        }
+        .auth-signout-btn:hover { color: #e4e6ed; background: rgba(165, 169, 192, 0.2); border-color: rgba(165, 169, 192, 0.35); }
+
+        .auth-error-banner {
+            display: flex; align-items: center; gap: 12px;
+            padding: 16px 20px; border-radius: 10px; margin-bottom: 24px;
+            background-color: rgba(153, 27, 27, 0.25); border: 1px solid rgba(248, 113, 113, 0.35);
+            color: #fca5a5; font-size: 0.9rem;
+        }
+        .auth-error-banner a {
+            color: #818cf8; text-decoration: underline; font-weight: 600;
+        }
+        .auth-error-banner a:hover { color: #a5b4fc; }
     </style>
 </head>
 <body>
 <div class="max-w-7xl mx-auto px-4 py-10" id="app">
     <!-- ═══ HOME VIEW ═══ -->
     <div id="view-home">
-        <header class="mb-10">
+        <header class="mb-10 flex items-center">
             <h1 style="font-size: 1.875rem; font-weight: 700; letter-spacing: -0.025em; color: #f3f4f6;">Container App Functions</h1>
+            <div id="auth-user-area" class="auth-user-area hidden">
+                <span id="auth-user-name" class="auth-user-name"></span>
+                <a id="auth-signout-btn" class="auth-signout-btn" href="/.auth/logout?post_logout_redirect_uri=/dashboard">Sign out</a>
+            </div>
         </header>
+        <div id="auth-error-banner" class="auth-error-banner hidden">
+            <svg style="width:20px;height:20px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m0 0v2m0-2h2m-2 0H10m11-7a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <span>You are not authorized to access this dashboard. <a href="/.auth/login/aad?post_login_redirect_uri=/dashboard">Please sign in.</a></span>
+        </div>
 
         <div id="permissions-banner" class="info-banner">
             <svg style="width:20px;height:20px;flex-shrink:0;margin-top:1px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             <div>
-                <strong style="color:#bfdbfe;">Before you start:</strong>
-                Ensure you have the necessary permissions on the Container App and Application Insights resources.
-                Write access (e.g. <em>Contributor</em>) is required for stopping the app and disabling functions &mdash; activate via PIM if needed.
-                <br style="margin-top:6px;">
                 <span style="color:#a5b4fc;">Note:</span> Disabling functions sets <code style="background:rgba(129,140,248,0.15);padding:1px 5px;border-radius:4px;font-size:0.8rem;">AzureWebJobs_&lt;name&gt;_Disabled</code> environment variables and creates a new revision. These changes will be overridden by the next deployment.
             </div>
             <button class="info-banner-dismiss" onclick="dismissBanner()" title="Dismiss">
@@ -535,11 +566,42 @@
 
     async function api(path, opts) {
         const res = await fetch(API + path, opts);
+        if (res.status === 401 || res.status === 403) {
+            show('auth-error-banner', true);
+            throw new Error(res.status === 401
+                ? 'Authentication required. Please sign in.'
+                : 'Access denied. You do not have the required role.');
+        }
         const text = await res.text();
         let body;
         try { body = JSON.parse(text); } catch { body = null; }
         if (!res.ok) throw new Error(body?.error || text || `Request failed (${res.status})`);
         return body;
+    }
+
+    // ── Auth: Detect Easy Auth and show user info ──
+    async function detectAuth() {
+        // Check server-side injected user info first
+        if (window.__DASHBOARD_USER__ && window.__DASHBOARD_USER__.name) {
+            $('auth-user-name').textContent = window.__DASHBOARD_USER__.name;
+            show('auth-user-area', true);
+        }
+        // Then try /.auth/me for richer info
+        try {
+            const res = await fetch('/.auth/me');
+            if (!res.ok) return;
+            const data = await res.json();
+            if (!data || !data.length) return;
+            const user = data[0];
+            const claims = user.user_claims || [];
+            const nameClaim = claims.find(c => c.typ === 'name');
+            const emailClaim = claims.find(c => c.typ && c.typ.indexOf('emailaddress') !== -1);
+            const displayName = (nameClaim && nameClaim.val) || (emailClaim && emailClaim.val) || user.user_id || '';
+            if (displayName) {
+                $('auth-user-name').textContent = displayName;
+                show('auth-user-area', true);
+            }
+        } catch { /* Easy Auth not configured — hide auth UI */ }
     }
 
     // ── Permissions banner ──
@@ -621,7 +683,6 @@
                 <span class="status-dot ${dotClass}"></span>
                 <span class="${badgeClass}">${esc(label)}</span>
                 <div class="flex items-center gap-3" style="margin-left:auto;">
-                    <button class="btn-outline-success" style="padding:5px 14px;font-size:0.8rem;" onclick="startApp()"${state.loading ? ' disabled' : ''}>Start App</button>
                     <span id="stop-app-area"><button class="btn-outline-danger" style="padding:5px 14px;font-size:0.8rem;" onclick="showStopConfirm()"${state.loading ? ' disabled' : ''}>Stop App</button></span>
                 </div>`;
         } else {
@@ -1034,6 +1095,7 @@
     }
 
     // ── Init ──
+    detectAuth();
     route();
     if (!location.hash || location.hash === '#/' || location.hash === '#') {
         loadFunctions();

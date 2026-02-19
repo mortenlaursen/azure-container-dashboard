@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
@@ -19,6 +20,15 @@ public class DashboardUiFunction
 
         using var reader = new StreamReader(stream);
         var html = reader.ReadToEnd();
+
+        // Inject server-side user info from Easy Auth header if present
+        if (req.Headers.TryGetValue("X-MS-CLIENT-PRINCIPAL-NAME", out var principalName)
+            && !string.IsNullOrWhiteSpace(principalName))
+        {
+            var encodedName = JavaScriptEncoder.Default.Encode(principalName.ToString());
+            var script = $"<script>window.__DASHBOARD_USER__ = {{ name: \"{encodedName}\" }};</script>";
+            html = html.Replace("</head>", script + "</head>");
+        }
 
         return new ContentResult
         {

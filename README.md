@@ -42,6 +42,42 @@ host.Run();
 
 Authentication uses `DefaultAzureCredential` (Managed Identity, Azure CLI, etc.).
 
+## Authentication (Optional)
+
+Protect your dashboard with Azure Entra ID authentication using Container Apps Easy Auth.
+
+### 1. Enable auth in your app
+
+```csharp
+var host = new HostBuilder()
+    .ConfigureFunctionsWebApplication(app =>
+    {
+        app.UseContainerDashboardAuth();
+    })
+    .ConfigureServices(services =>
+    {
+        services.AddContainerDashboard(options =>
+        {
+            options.RequireAuthentication = true;
+        });
+    })
+    .Build();
+
+host.Run();
+```
+
+### 2. Enable Easy Auth on your Container App
+
+Navigate to your Container App in the Azure Portal, select **Authentication**, click **Add identity provider**, choose **Microsoft**, and set **Restrict access** to "Require authentication".
+
+### 3. (Optional) Restrict by role
+
+```csharp
+options.AllowedRoles = ["Dashboard.Admin"];
+```
+
+For the full setup guide, see [specs/001-entra-auth/quickstart.md](specs/001-entra-auth/quickstart.md).
+
 ## Features
 
 - **App control** — Start and stop your Container App
