@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
     <PackageId>Schultzzz.ContainerApp.Dashboard</PackageId>
-    <Version>1.2.0</Version>
+    <Version>1.2.1</Version>
     <Authors>mortenlaursen</Authors>
     <Description>Azure Functions dashboard for managing Azure Container Apps - start, stop, view invocations, and monitor functions.</Description>
     <RepositoryUrl>https://github.com/mortenlaursen/azure-container-dashboard</RepositoryUrl>

@@ -339,10 +339,6 @@
         <div id="permissions-banner" class="info-banner">
             <svg style="width:20px;height:20px;flex-shrink:0;margin-top:1px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
             <div>
-                <strong style="color:#bfdbfe;">Before you start:</strong>
-                Ensure you have the necessary permissions on the Container App and Application Insights resources.
-                Write access (e.g. <em>Contributor</em>) is required for stopping the app and disabling functions &mdash; activate via PIM if needed.
-                <br style="margin-top:6px;">
                 <span style="color:#a5b4fc;">Note:</span> Disabling functions sets <code style="background:rgba(129,140,248,0.15);padding:1px 5px;border-radius:4px;font-size:0.8rem;">AzureWebJobs_&lt;name&gt;_Disabled</code> environment variables and creates a new revision. These changes will be overridden by the next deployment.
             </div>
             <button class="info-banner-dismiss" onclick="dismissBanner()" title="Dismiss">
@@ -553,7 +549,6 @@
 
     // ── Expose globals for inline onclick ──
     window.loadFunctions = loadFunctions;
-    window.startApp = startApp;
     window.showStopConfirm = showStopConfirm;
     window.confirmStopApp = confirmStopApp;
     window.cancelStopConfirm = cancelStopConfirm;
@@ -621,7 +616,6 @@
                 <span class="status-dot ${dotClass}"></span>
                 <span class="${badgeClass}">${esc(label)}</span>
                 <div class="flex items-center gap-3" style="margin-left:auto;">
-                    <button class="btn-outline-success" style="padding:5px 14px;font-size:0.8rem;" onclick="startApp()"${state.loading ? ' disabled' : ''}>Start App</button>
                     <span id="stop-app-area"><button class="btn-outline-danger" style="padding:5px 14px;font-size:0.8rem;" onclick="showStopConfirm()"${state.loading ? ' disabled' : ''}>Stop App</button></span>
                 </div>`;
         } else {
@@ -789,19 +783,6 @@
             state.loading = false;
             renderHome();
         }
-    }
-
-    async function startApp() {
-        state.loading = true;
-        state.error = null;
-        state.successMessage = null;
-        renderHome();
-        try {
-            const res = await api('/app/start', { method: 'POST' });
-            state.runningStatus = 'Running';
-            state.successMessage = res.message;
-        } catch (e) { state.error = e.message; }
-        finally { state.loading = false; renderHome(); }
     }
 
     function showStopConfirm() { state.confirmingStopApp = true; renderHome(); }
