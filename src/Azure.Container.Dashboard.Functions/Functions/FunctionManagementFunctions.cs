@@ -7,6 +7,19 @@ namespace Azure.Container.Dashboard.Functions;
 
 public class FunctionManagementFunctions
 {
+    private static readonly HashSet<string> DashboardFunctionNames =
+    [
+        "DashboardUI",
+        "DashboardFunctionsList",
+        "DashboardFunctionsUpdate",
+        "DashboardInvocations",
+        "DashboardInvocationCounts",
+        "DashboardTraces",
+        "DashboardAppStatus",
+        "DashboardAppStart",
+        "DashboardAppStop",
+    ];
+
     private readonly ContainerAppFunctionsClient _client;
     private readonly DashboardOptions _options;
 
@@ -29,14 +42,16 @@ public class FunctionManagementFunctions
             var result = await _client.ListFunctionsAsync(
                 _options.SubscriptionId!, _options.ResourceGroup!, _options.AppName!, cancellationToken);
 
-            var functions = result.Value.Select(f => new
-            {
-                name = f.Name,
-                triggerType = f.Properties.TriggerType,
-                language = f.Properties.Language,
-                isDisabled = f.Properties.IsDisabled,
-                invokeUrlTemplate = f.Properties.InvokeUrlTemplate
-            });
+            var functions = result.Value
+                .Where(f => !DashboardFunctionNames.Contains(f.Name))
+                .Select(f => new
+                {
+                    name = f.Name,
+                    triggerType = f.Properties.TriggerType,
+                    language = f.Properties.Language,
+                    isDisabled = f.Properties.IsDisabled,
+                    invokeUrlTemplate = f.Properties.InvokeUrlTemplate
+                });
 
             return new OkObjectResult(functions);
         }
